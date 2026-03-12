@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Entity {
+  id                    String   @id @default(uuid())
+  name                  String
+  slug                  String   @unique
+  type                  String   // DEFENSE_PRIME, CYBER_INTEL, SURVEILLANCE, AI_ML, INVESTOR, GOVERNMENT, CLOUD_INFRA, STARTUP, CONSULTANCY
+  subTypes              String   @default("[]") // JSON array
+  description           String   @default("")
+  headquartersCountryId String?
+  headquartersCity      String?
+  founded               Int?
+  website               String?
+  alsoKnownAs           String   @default("[]") // JSON array
+  fundingType           String?  // public, private, government
+  ticker                String?
+  stockExchange         String?
+  cageCode              String?
+  uei                   String?
+  naicsCodes            String   @default("[]") // JSON array
+  employeeCount         String?
+  annualRevenue         String?
+  isin                  String?
+  logoUrl               String?
+  sources               String   @default("[]") // JSON array of {url, title, domain, date}
+  providingTo           String   @default("[]") // JSON array of {name, alpha2, lat, lon}
+  surveilling           String   @default("[]") // JSON array of {name, alpha2, lat, lon}
+  hasDirectTargets      Boolean  @default(false)
+  externalId            String?  @unique // ID from Surveillance Watch or other sources
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  headquartersCountry Country? @relation(fields: [headquartersCountryId], references: [id])
+  connectionsFrom     Connection[] @relation("ConnectionSource")
+  connectionsTo       Connection[] @relation("ConnectionTarget")
+  contracts           Contract[]   @relation("ContractEntity")
+  agencyContracts     Contract[]   @relation("ContractAgency")
+  fundingRounds       FundingRound[]
+  newsItems           NewsItemEntity[]
+}
+
+model Connection {
+  id             String    @id @default(uuid())
+  sourceEntityId String
+  targetEntityId String
+  connectionType String    // CONTRACTS, INVESTED_IN, ACQUIRED, SUBSIDIARY, PARTNERSHIP, SUPPLIES_TO, FUNDED_BY, LOBBIES, PERSONNEL_OVERLAP
+  description    String?
+  value          Float?
+  startDate      DateTime?
+  endDate        DateTime?
+  sources        String    @default("[]")
+  confidence     String    @default("confirmed") // confirmed, reported, inferred
+  createdAt      DateTime  @default(now())
+
+  sourceEntity Entity @relation("ConnectionSource", fields: [sourceEntityId], references: [id])
+  targetEntity Entity @relation("ConnectionTarget", fields: [targetEntityId], references: [id])
+
+  @@unique([sourceEntityId, targetEntityId, connectionType])
+}
+
+model Country {
+  id        String  @id @default(uuid())
+  name      String
+  alpha2    String  @unique
+  alpha3    String?
+  latitude  Float
+  longitude Float
+  region    String?
+
+  entities Entity[]
+}
+
+model Contract {
+  id                 String    @id @default(uuid())
+  awardId            String?   @unique
+  entityId           String
+  agencyId           String?
+  description        String?
+  value              Float?
+  awardDate          DateTime?
+  endDate            DateTime?
+  naicsCode          String?
+  psc                String?
+  placeOfPerformance String?
+  sources            String    @default("[]")
+  createdAt          DateTime  @default(now())
+
+  entity Entity  @relation("ContractEntity", fields: [entityId], references: [id])
+  agency Entity? @relation("ContractAgency", fields: [agencyId], references: [id])
+}
+
+model FundingRound {
+  id        String    @id @default(uuid())
+  entityId  String
+  roundType String?
+  amount    Float?
+  date      DateTime?
+  investors String    @default("[]") // JSON array of entity IDs
+  sources   String    @default("[]")
+  createdAt DateTime  @default(now())
+
+  entity Entity @relation(fields: [entityId], references: [id])
+}
+
+model NewsItem {
+  id          String   @id @default(uuid())
+  title       String
+  url         String   @unique
+  source      String
+  publishedAt DateTime
+  summary     String?
+  createdAt   DateTime @default(now())
+
+  relatedEntities NewsItemEntity[]
+}
+
+model NewsItemEntity {
+  id         String @id @default(uuid())
+  newsItemId String
+  entityId   String
+
+  newsItem NewsItem @relation(fields: [newsItemId], references: [id])
+  entity   Entity   @relation(fields: [entityId], references: [id])
+
+  @@unique([newsItemId, entityId])
+}
