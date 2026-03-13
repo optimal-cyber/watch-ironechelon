@@ -288,7 +288,7 @@ export default function ContractsPage() {
                     key={conn.id}
                     className="border-b border-border/30 hover:bg-surface/50 transition-colors"
                   >
-                    <td className="px-6 py-2">
+                    <td className="px-3 md:px-6 py-2">
                       <button
                         onClick={() => selectEntity(conn.sourceEntity.id)}
                         className="text-xs font-mono text-slate-300 hover:text-white transition-colors text-left"
@@ -296,7 +296,7 @@ export default function ContractsPage() {
                         {conn.sourceEntity.name}
                       </button>
                     </td>
-                    <td className="px-6 py-2">
+                    <td className="px-3 md:px-6 py-2">
                       <button
                         onClick={() => selectEntity(conn.targetEntity.id)}
                         className="text-xs font-mono text-slate-300 hover:text-white transition-colors text-left"
@@ -304,12 +304,12 @@ export default function ContractsPage() {
                         {conn.targetEntity.name}
                       </button>
                     </td>
-                    <td className="px-6 py-2">
+                    <td className="px-3 md:px-6 py-2">
                       <span className="text-[10px] font-mono text-accent-blue">
                         {conn.connectionType.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-2">
+                    <td className="px-3 md:px-6 py-2">
                       <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                         conn.confidence === 'confirmed'
                           ? 'text-accent-green bg-accent-green/10'

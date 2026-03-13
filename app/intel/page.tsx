@@ -161,6 +161,42 @@ export default function IntelPage() {
 
         {/* Main feed */}
         <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Mobile category filter chips */}
+          <div className="md:hidden border-b border-border px-3 py-2 overflow-x-auto shrink-0">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCategoryFilter(null)}
+                className={`shrink-0 px-2.5 py-1 rounded text-[10px] font-mono tracking-wider transition-colors ${
+                  !categoryFilter ? 'bg-accent-red/15 border border-accent-red/30 text-accent-red' : 'bg-surface border border-border text-muted-foreground'
+                }`}
+              >
+                ALL
+              </button>
+              {categories.map((cat) => {
+                const count = items.filter((i) => i.category === cat).length
+                if (count === 0) return null
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+                    className={`shrink-0 px-2.5 py-1 rounded text-[10px] font-mono tracking-wider transition-colors ${
+                      categoryFilter === cat
+                        ? 'border'
+                        : 'bg-surface border border-border text-muted-foreground'
+                    }`}
+                    style={categoryFilter === cat ? {
+                      color: CATEGORY_COLORS[cat],
+                      borderColor: CATEGORY_COLORS[cat] + '40',
+                      backgroundColor: CATEGORY_COLORS[cat] + '15',
+                    } : undefined}
+                  >
+                    {cat}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Search bar */}
           <div className="p-4 border-b border-border shrink-0">
             <input
@@ -214,7 +250,7 @@ export default function IntelPage() {
                     href={item.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block px-6 py-3 hover:bg-surface/50 transition-colors group"
+                    className="block px-3 md:px-6 py-3 hover:bg-surface/50 transition-colors group"
                   >
                     <div className="flex items-start gap-3">
                       <span

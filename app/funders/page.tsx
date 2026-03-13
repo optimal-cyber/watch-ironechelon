@@ -130,7 +130,7 @@ export default function FundersPage() {
       <SearchCommand />
 
       <div className="flex-1 pt-12 pb-7 flex flex-col md:flex-row bg-background min-h-0">
-        {/* List */}
+        {/* Desktop sidebar list */}
         <div className="hidden md:block w-72 shrink-0 border-r border-border overflow-y-auto bg-surface/50 p-4">
           <h2 className="font-mono text-xs tracking-[0.2em] text-accent-gold mb-4">
             SURVEILLANCE FUNDERS
@@ -168,6 +168,25 @@ export default function FundersPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Mobile: horizontal scrolling funder chips */}
+        <div className="md:hidden border-b border-border px-3 py-2 overflow-x-auto shrink-0">
+          <div className="flex gap-2">
+            {funders.slice(0, 20).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => selectEntity(f.id)}
+                className={`shrink-0 px-3 py-1.5 rounded text-[10px] font-mono tracking-wider transition-colors ${
+                  selectedEntityId === f.id
+                    ? 'bg-accent-gold/15 border border-accent-gold/40 text-accent-gold'
+                    : 'bg-surface border border-border text-muted-foreground'
+                }`}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Main content */}
@@ -248,9 +267,28 @@ export default function FundersPage() {
           </div>
         </div>
 
-        {/* Right sidebar - entity detail */}
+        {/* Right sidebar - entity detail (desktop) */}
         {selectedEntity && (
           <div className="hidden md:block w-96 shrink-0 border-l border-border overflow-y-auto bg-surface/50">
+            <EntityDetail
+              entity={selectedEntity}
+              onClose={() => selectEntity(null)}
+            />
+          </div>
+        )}
+
+        {/* Mobile entity detail overlay */}
+        {selectedEntity && (
+          <div className="md:hidden fixed inset-0 z-40 pt-12 bg-background overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-surface/90 backdrop-blur-md border-b border-border px-3 py-2 flex items-center justify-between">
+              <span className="font-mono text-xs text-accent-gold tracking-wider">FUNDER DETAIL</span>
+              <button
+                onClick={() => selectEntity(null)}
+                className="font-mono text-xs text-muted hover:text-foreground px-2 py-1"
+              >
+                CLOSE
+              </button>
+            </div>
             <EntityDetail
               entity={selectedEntity}
               onClose={() => selectEntity(null)}
