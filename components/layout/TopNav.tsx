@@ -44,13 +44,21 @@ export default function TopNav({ onSearchOpen }: { onSearchOpen?: () => void }) 
 
       <div className="flex-1" />
 
-      <button
-        onClick={onSearchOpen}
-        className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono text-muted rounded border border-border hover:border-border-bright hover:text-muted-foreground transition-colors"
-      >
-        <span>SEARCH</span>
-        <kbd className="text-[10px] bg-background px-1 py-0.5 rounded">⌘K</kbd>
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onSearchOpen}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono text-muted rounded border border-border hover:border-border-bright hover:text-muted-foreground transition-colors"
+        >
+          <span>SEARCH</span>
+          <kbd className="text-[10px] bg-background px-1 py-0.5 rounded">⌘K</kbd>
+        </button>
+        <Link
+          href="/submit"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono tracking-wider text-accent-red rounded border border-accent-red/30 hover:bg-accent-red/10 hover:border-accent-red/50 transition-colors"
+        >
+          SUBMIT
+        </Link>
+      </div>
     </nav>
   )
 }

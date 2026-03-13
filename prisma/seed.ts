@@ -1,10 +1,13 @@
 // Full seed script — captures all Surveillance Watch data including
 // surveilling countries, providingTo countries, market info, and funder connections
 
+import 'dotenv/config'
 import { PrismaClient } from '../app/generated/prisma/client'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 
-const adapter = new PrismaLibSql({ url: 'file:dev.db' })
+const url = process.env.TURSO_DATABASE_URL || 'file:dev.db'
+const authToken = process.env.TURSO_AUTH_TOKEN
+const adapter = new PrismaLibSql({ url, ...(authToken ? { authToken } : {}) })
 const prisma = new PrismaClient({ adapter })
 
 const SW_BASE = 'https://www.surveillancewatch.io/api/v1'

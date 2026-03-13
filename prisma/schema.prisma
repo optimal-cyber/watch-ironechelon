@@ -131,3 +131,19 @@ model NewsItemEntity {
 
   @@unique([newsItemId, entityId])
 }
+
+model Submission {
+  id              String   @id @default(uuid())
+  submitterEmail  String?
+  entityName      String
+  entityType      String
+  website         String?
+  headquartersCountry String?
+  description     String
+  connectionInfo  String?  // free-text about connections/funding
+  sourceUrls      String   @default("[]") // JSON array
+  status          String   @default("pending") // pending, approved, rejected
+  reviewNotes     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
