@@ -125,7 +125,7 @@ export default function NetworkPage() {
 
     const width = container.clientWidth
     const height = container.clientHeight - 20
-    if (width < 400 || height < 100) return // Container not laid out yet
+    if (width < 200 || height < 100) return // Container not laid out yet
     svg.attr('width', width).attr('height', height + 20)
 
     const isMobile = width < 768
@@ -375,6 +375,7 @@ export default function NetworkPage() {
       .attr('font-family', 'JetBrains Mono, monospace')
       .attr('font-size', (d) => {
         const node = d as unknown as SNode
+        if (isMobile) return node.id === entity.id ? '9px' : '7px'
         return node.id === entity.id ? '12px' : '10px'
       })
       .attr('font-weight', (d) => {
@@ -385,7 +386,7 @@ export default function NetworkPage() {
       .style('pointer-events', 'none')
       .text((d) => {
         const node = d as unknown as SNode
-        const maxLen = node.column === 1 ? 30 : 22
+        const maxLen = isMobile ? (node.column === 1 ? 16 : 12) : (node.column === 1 ? 30 : 22)
         return node.name.length > maxLen ? node.name.slice(0, maxLen - 2) + '..' : node.name
       })
   }
@@ -434,15 +435,15 @@ export default function NetworkPage() {
           </div>
 
           {selectedName && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-[10px] font-mono text-slate-500 tracking-wider">VIEWING:</span>
-              <span className="text-sm font-mono text-white font-bold">{selectedName}</span>
+              <span className="text-sm font-mono text-white font-bold truncate max-w-[200px]">{selectedName}</span>
             </div>
           )}
         </div>
 
         {/* Sankey diagram */}
-        <div className="flex-1 relative min-h-0" ref={containerRef}>
+        <div className="flex-1 relative min-h-[300px]" ref={containerRef}>
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
