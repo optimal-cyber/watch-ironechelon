@@ -58,6 +58,14 @@ export default function TopNav({ onSearchOpen }: { onSearchOpen?: () => void }) 
         >
           SUBMIT
         </Link>
+        <a
+          href="https://www.ironechelon.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono tracking-wider text-accent-gold rounded border border-accent-gold/30 hover:bg-accent-gold/10 hover:border-accent-gold/50 transition-colors"
+        >
+          NEWSLETTER
+        </a>
       </div>
     </nav>
   )

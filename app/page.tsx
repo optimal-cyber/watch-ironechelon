@@ -248,6 +248,14 @@ export default function Home() {
             >
               SUBMIT
             </button>
+            <a
+              href="https://www.ironechelon.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[11px] tracking-[0.15em] text-accent-gold border border-accent-gold/30 px-3 py-1 rounded hover:bg-accent-gold/10 hover:border-accent-gold/50 transition-colors"
+            >
+              NEWSLETTER
+            </a>
           </div>
         </motion.nav>
 
