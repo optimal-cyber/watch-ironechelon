@@ -90,6 +90,16 @@ model Contract {
   psc                String?
   placeOfPerformance String?
   sources            String    @default("[]")
+  // SBIR/STTR fields
+  sbirProgram        String?   // "SBIR" or "STTR"
+  sbirPhase          String?   // "I", "II", "III"
+  sbirTopicCode      String?
+  sbirAgency         String?   // Top-level agency: "DOD", "NASA", "HHS", etc.
+  sbirBranch         String?   // Sub-agency: "Air Force", "Army", "DARPA", etc.
+  sbirAwardYear      Int?
+  sbirAbstract       String?
+  sbirKeywords       String?   // JSON array
+  sbirPiName         String?   // Principal Investigator
   createdAt          DateTime  @default(now())
 
   entity Entity  @relation("ContractEntity", fields: [entityId], references: [id])

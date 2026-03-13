@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx prisma/seed.ts",
+    "seed:sbir": "npx tsx prisma/seed-sbir.ts",
     "sync": "npx tsx -e \"fetch('http://localhost:3000/api/sync/surveillance-watch', {method:'POST'}).then(r=>r.json()).then(console.log)\""
   },
   "prisma": {
