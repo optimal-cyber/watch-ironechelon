@@ -93,7 +93,7 @@ export default function ContractsPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/contracts').then((r) => r.json()),
-      fetch('/api/connections').then((r) => r.json()),
+      fetch('/api/connections?type=INVESTED_IN').then((r) => r.json()),
       fetch('/api/sbir').then((r) => r.json()),
     ])
       .then(([contractData, connData, sbirData]) => {

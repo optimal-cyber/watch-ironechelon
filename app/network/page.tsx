@@ -63,6 +63,7 @@ export default function NetworkPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedName, setSelectedName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [entityData, setEntityData] = useState<DetailData | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; type: string; detail: string } | null>(null)
 
   // Search entities
@@ -83,25 +84,36 @@ export default function NetworkPage() {
   // Keep a stable ref to buildEntitySankey so the useCallback always calls latest
   const buildRef = useRef<((entity: DetailData) => void) | null>(null)
 
-  // Fetch entity detail and build Sankey
+  // Fetch entity detail — store in state, let useEffect handle rendering
   const selectAndBuild = useCallback(async (id: string, name: string) => {
     setSelectedId(id)
     setSelectedName(name)
     setSearch('')
     setResults([])
     setLoading(true)
+    setEntityData(null)
 
     try {
       const res = await fetch(`/api/entities/${id}`)
       const entity: DetailData = await res.json()
-      // Use rAF to ensure container is laid out before measuring
-      requestAnimationFrame(() => buildRef.current?.(entity))
+      setEntityData(entity)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
   }, [])
+
+  // Build Sankey AFTER loading is done and SVG is mounted
+  useEffect(() => {
+    if (loading || !entityData) return
+    // Wait for React to render the SVG element
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        buildRef.current?.(entityData)
+      })
+    })
+  }, [loading, entityData])
 
   // Load a default entity on mount (most connected)
   useEffect(() => {
