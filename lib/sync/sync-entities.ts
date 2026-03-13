@@ -137,6 +137,11 @@ export async function syncEntities() {
       ? `https://${sw.domains[0].domain}`
       : null
 
+    // headquartersCity can be a string or an object { id, name, country }
+    const hqCity = typeof sw.headquartersCity === 'string'
+      ? sw.headquartersCity
+      : (sw.headquartersCity as { name?: string } | null)?.name || null
+
     const entity = await upsertEntity(
       sw.name,
       slugify(sw.name),
@@ -145,7 +150,7 @@ export async function syncEntities() {
       {
         description,
         headquartersCountrySlug: sw.headquarters?.slug || undefined,
-        headquartersCity: sw.headquartersCity,
+        headquartersCity: hqCity,
         subTypes,
         alsoKnownAs: [...affiliations, ...subsidiariesList],
         sources,

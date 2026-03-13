@@ -44,7 +44,7 @@ export interface SWEntity {
     longitude: number
     slug: string
   } | null
-  headquartersCity: string | null
+  headquartersCity: string | { id: string; name: string; country?: unknown } | null
   surveilling: Array<{
     id: string
     name: string
