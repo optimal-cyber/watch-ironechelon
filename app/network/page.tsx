@@ -64,6 +64,7 @@ export default function NetworkPage() {
   const [selectedName, setSelectedName] = useState('')
   const [loading, setLoading] = useState(false)
   const [entityData, setEntityData] = useState<DetailData | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; type: string; detail: string } | null>(null)
 
   // Search entities
@@ -92,13 +93,23 @@ export default function NetworkPage() {
     setResults([])
     setLoading(true)
     setEntityData(null)
+    setError(null)
 
     try {
       const res = await fetch(`/api/entities/${id}`)
+      if (!res.ok) {
+        setError(`Failed to load entity (${res.status})`)
+        return
+      }
       const entity: DetailData = await res.json()
+      if (!entity || entity.id === undefined) {
+        setError('Invalid entity data')
+        return
+      }
       setEntityData(entity)
     } catch (err) {
       console.error(err)
+      setError('Network error loading entity')
     } finally {
       setLoading(false)
     }
@@ -461,6 +472,19 @@ export default function NetworkPage() {
               <div className="text-center">
                 <div className="font-mono text-xs text-slate-500 tracking-[0.3em] mb-2 animate-pulse">BUILDING</div>
                 <div className="font-mono text-[#C8102E] text-sm tracking-[0.2em]">SUPPLY CHAIN MAP</div>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#C8102E] tracking-[0.3em] mb-2">ERROR</div>
+                <div className="font-mono text-slate-400 text-xs max-w-[300px]">{error}</div>
+                <button
+                  onClick={() => { setError(null); if (selectedId) { setLoading(true); fetch(`/api/entities/${selectedId}`).then(r => r.json()).then(d => { setEntityData(d); setLoading(false); }).catch(() => { setError('Retry failed'); setLoading(false); }); } }}
+                  className="mt-3 font-mono text-[10px] text-slate-500 border border-slate-700 px-3 py-1 hover:text-white hover:border-slate-500 transition-colors tracking-wider"
+                >
+                  RETRY
+                </button>
               </div>
             </div>
           ) : (
