@@ -103,7 +103,7 @@ export default function ContractsPage() {
 
       <div className="flex-1 pt-12 pb-7 bg-background overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-border shrink-0">
+        <div className="p-4 md:p-6 border-b border-border shrink-0">
           <h1 className="font-mono text-2xl tracking-[0.15em] text-foreground mb-2">
             GOVERNMENT CONTRACTS & INVESTMENTS
           </h1>
@@ -193,7 +193,7 @@ export default function ContractsPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="p-6 space-y-2">
               {Array.from({ length: 10 }).map((_, i) => (
@@ -221,11 +221,11 @@ export default function ContractsPage() {
               <table className="w-full">
                 <thead className="sticky top-0 bg-background border-b border-border z-10">
                   <tr>
-                    <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Contractor</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Agency</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Description</th>
-                    <th className="text-right px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Value</th>
-                    <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Date</th>
+                    <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Contractor</th>
+                    <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Agency</th>
+                    <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Description</th>
+                    <th className="text-right px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Value</th>
+                    <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -234,7 +234,7 @@ export default function ContractsPage() {
                       key={contract.id}
                       className="border-b border-border/30 hover:bg-surface/50 transition-colors"
                     >
-                      <td className="px-6 py-2.5">
+                      <td className="px-3 md:px-6 py-2">
                         <button
                           onClick={() => selectEntity(contract.entity.id)}
                           className="text-xs font-mono text-slate-300 hover:text-white transition-colors text-left"
@@ -242,17 +242,17 @@ export default function ContractsPage() {
                           {contract.entity.name}
                         </button>
                       </td>
-                      <td className="px-6 py-2.5">
+                      <td className="px-3 md:px-6 py-2">
                         <span className="text-xs font-mono text-accent-blue">
                           {contract.agency?.name || 'N/A'}
                         </span>
                       </td>
-                      <td className="px-6 py-2.5 max-w-sm">
+                      <td className="px-3 md:px-6 py-2 max-w-sm">
                         <span className="text-[11px] text-muted-foreground line-clamp-2">
                           {contract.description || '—'}
                         </span>
                       </td>
-                      <td className="px-6 py-2.5 text-right">
+                      <td className="px-3 md:px-6 py-2 text-right">
                         {contract.value ? (
                           <span className="text-xs font-mono text-accent-green font-bold">
                             {formatCurrency(contract.value)}
@@ -261,7 +261,7 @@ export default function ContractsPage() {
                           <span className="text-xs text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-2.5">
+                      <td className="px-3 md:px-6 py-2">
                         <span className="text-[10px] font-mono text-muted">
                           {contract.awardDate ? formatDate(contract.awardDate) : '—'}
                         </span>
@@ -276,10 +276,10 @@ export default function ContractsPage() {
             <table className="w-full">
               <thead className="sticky top-0 bg-background border-b border-border z-10">
                 <tr>
-                  <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Investor</th>
-                  <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Entity</th>
-                  <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Type</th>
-                  <th className="text-left px-6 py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Confidence</th>
+                  <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Investor</th>
+                  <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Entity</th>
+                  <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Type</th>
+                  <th className="text-left px-3 md:px-6 py-2 md:py-3 text-[10px] font-mono tracking-wider text-muted uppercase">Confidence</th>
                 </tr>
               </thead>
               <tbody>

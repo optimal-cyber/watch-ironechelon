@@ -90,7 +90,7 @@ export default function SubmitPage() {
       <SearchCommand />
 
       <div className="flex-1 pt-12 pb-7 overflow-y-auto bg-background">
-        <div className="max-w-2xl mx-auto px-6 py-10">
+        <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
           {/* Header */}
           <div className="mb-8">
             <div className="font-mono text-[10px] tracking-[0.3em] text-accent-red mb-2">CROWDSOURCED INTELLIGENCE</div>
@@ -158,7 +158,7 @@ export default function SubmitPage() {
               </div>
 
               {/* Two columns */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-mono text-[10px] tracking-[0.2em] text-muted mb-2">WEBSITE</label>
                   <input

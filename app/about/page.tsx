@@ -7,7 +7,7 @@ export default function AboutPage() {
       <TopNav />
 
       <div className="flex-1 pt-12 pb-7 bg-background overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-8 py-12">
+        <div className="max-w-2xl mx-auto px-4 md:px-8 py-8 md:py-12">
           <h1 className="font-mono text-2xl tracking-[0.15em] text-foreground mb-2">
             ABOUT IRON ECHELON
           </h1>

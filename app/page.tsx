@@ -140,8 +140,8 @@ export default function Home() {
         backgroundSize: '50px 50px',
       }} />
 
-      {/* Scrolling data feed — left side */}
-      <div className="absolute left-4 top-20 bottom-20 w-72 z-[2] overflow-hidden pointer-events-none opacity-[0.12]">
+      {/* Scrolling data feed — left side (hidden on mobile) */}
+      <div className="hidden lg:block absolute left-4 top-20 bottom-20 w-72 z-[2] overflow-hidden pointer-events-none opacity-[0.12]">
         <motion.div
           animate={{ y: [0, -FEED_LINES.length * 28] }}
           transition={{ duration: FEED_LINES.length * 3, repeat: Infinity, ease: 'linear' }}
@@ -153,8 +153,8 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* Scrolling data feed — right side */}
-      <div className="absolute right-4 top-20 bottom-20 w-72 z-[2] overflow-hidden pointer-events-none opacity-[0.12]">
+      {/* Scrolling data feed — right side (hidden on mobile) */}
+      <div className="hidden lg:block absolute right-4 top-20 bottom-20 w-72 z-[2] overflow-hidden pointer-events-none opacity-[0.12]">
         <motion.div
           animate={{ y: [-FEED_LINES.length * 28, 0] }}
           transition={{ duration: FEED_LINES.length * 3.5, repeat: Infinity, ease: 'linear' }}
@@ -218,14 +218,14 @@ export default function Home() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: phase !== 'boot' ? 1 : 0, y: phase !== 'boot' ? 0 : -20 }}
           transition={{ delay: 0.3, duration: 0.6 }}
-          className="flex items-center justify-between px-8 py-5"
+          className="flex items-center justify-between px-4 md:px-8 py-4 md:py-5"
         >
           <div className="flex items-center gap-2">
             <span className="text-accent-red">&lt;</span>
             <span className="font-mono text-sm tracking-[0.2em] text-foreground font-bold">IRON ECHELON</span>
             <span className="text-accent-red">&gt;</span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6">
             {[
               { label: 'MAP', href: '/map' },
               { label: 'NETWORK', href: '/network' },
@@ -257,25 +257,40 @@ export default function Home() {
               NEWSLETTER
             </a>
           </div>
+          {/* Mobile: just show key actions */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={() => router.push('/map')}
+              className="font-mono text-[10px] tracking-[0.15em] text-muted hover:text-foreground transition-colors"
+            >
+              ENTER
+            </button>
+            <button
+              onClick={() => router.push('/submit')}
+              className="font-mono text-[10px] tracking-[0.1em] text-accent-red border border-accent-red/30 px-2 py-0.5 rounded"
+            >
+              SUBMIT
+            </button>
+          </div>
         </motion.nav>
 
         {/* Hero text over globe */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-8">
           <div className="text-center max-w-3xl">
             {/* Line 1 — typewriter */}
-            <div className="font-mono text-lg md:text-xl tracking-[0.3em] text-slate-300 mb-6 font-medium min-h-[2rem]">
+            <div className="font-mono text-sm md:text-lg lg:text-xl tracking-[0.2em] md:tracking-[0.3em] text-slate-300 mb-4 md:mb-6 font-medium min-h-[1.5rem] md:min-h-[2rem]">
               {line1.displayed}
               {!line1.done && <span className="animate-pulse text-accent-red">|</span>}
             </div>
 
             {/* Line 2 */}
-            <h1 className="font-mono text-4xl md:text-6xl tracking-[0.08em] text-white font-bold leading-tight mb-3 min-h-[4rem]">
+            <h1 className="font-mono text-2xl sm:text-4xl md:text-6xl tracking-[0.08em] text-white font-bold leading-tight mb-2 md:mb-3 min-h-[2.5rem] md:min-h-[4rem]">
               {line2.displayed}
               {!line2.done && line1.done && <span className="animate-pulse text-accent-red">|</span>}
             </h1>
 
             {/* Line 3 — red accent */}
-            <h1 className="font-mono text-4xl md:text-6xl tracking-[0.08em] font-bold leading-tight mb-12 min-h-[4rem]">
+            <h1 className="font-mono text-2xl sm:text-4xl md:text-6xl tracking-[0.08em] font-bold leading-tight mb-8 md:mb-12 min-h-[2.5rem] md:min-h-[4rem]">
               <span className="text-accent-red">{line3.displayed}</span>
               {!line3.done && line2.done && <span className="animate-pulse text-white">|</span>}
             </h1>
@@ -285,7 +300,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: line3.done ? 1 : 0, y: line3.done ? 0 : 10 }}
               transition={{ duration: 0.8 }}
-              className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed mb-14"
+              className="text-slate-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-8 md:mb-14 px-2"
             >
               Iron Echelon is an interactive intelligence platform mapping the defense technology,
               cybersecurity, AI, and surveillance ecosystem — companies, investors, contracts,
@@ -298,7 +313,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: line3.done ? 1 : 0, y: line3.done ? 0 : 30 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="grid grid-cols-3 gap-4 max-w-3xl w-full"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 max-w-3xl w-full"
           >
             <button
               onClick={() => router.push('/map')}
@@ -350,7 +365,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: line3.done ? 1 : 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="flex items-center gap-8 mt-10 font-mono text-[10px] tracking-[0.2em] text-muted"
+              className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mt-6 md:mt-10 font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-muted"
             >
               <span><span className="text-accent-red font-bold">{stats.totalEntities}</span> ENTITIES</span>
               <span className="text-white/10">|</span>

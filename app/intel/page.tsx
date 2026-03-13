@@ -89,9 +89,9 @@ export default function IntelPage() {
       <TopNav onSearchOpen={() => setSearchOpen(true)} />
       <SearchCommand />
 
-      <div className="flex-1 pt-12 pb-7 bg-background overflow-hidden flex">
-        {/* Left sidebar - sources */}
-        <div className="w-64 shrink-0 border-r border-border overflow-y-auto bg-surface/50 p-4">
+      <div className="flex-1 pt-12 pb-7 bg-background overflow-hidden flex flex-col md:flex-row">
+        {/* Left sidebar - sources (hidden on mobile) */}
+        <div className="hidden md:block w-64 shrink-0 border-r border-border overflow-y-auto bg-surface/50 p-4">
           <h2 className="font-mono text-xs tracking-[0.2em] text-accent-red mb-4">
             OSINT FEEDS
           </h2>

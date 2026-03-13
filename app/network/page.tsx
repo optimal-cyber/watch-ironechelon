@@ -128,7 +128,10 @@ export default function NetworkPage() {
     if (width < 400 || height < 100) return // Container not laid out yet
     svg.attr('width', width).attr('height', height + 20)
 
-    const MARGIN = { left: 180, right: 180, top: 30, bottom: 20 }
+    const isMobile = width < 768
+    const MARGIN = isMobile
+      ? { left: 80, right: 80, top: 30, bottom: 20 }
+      : { left: 180, right: 180, top: 30, bottom: 20 }
 
     const nodes: SNode[] = []
     const links: SLink[] = []
@@ -395,7 +398,7 @@ export default function NetworkPage() {
 
       <div className="flex-1 pt-12 pb-7 flex flex-col min-h-0">
         {/* Search bar */}
-        <div className="px-6 py-3 border-b border-white/5 flex items-center gap-4">
+        <div className="px-3 md:px-6 py-3 border-b border-white/5 flex items-center gap-2 md:gap-4">
           <div className="relative flex-1 max-w-md">
             <input
               type="text"

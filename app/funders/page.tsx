@@ -129,9 +129,9 @@ export default function FundersPage() {
       <TopNav onSearchOpen={() => setSearchOpen(true)} />
       <SearchCommand />
 
-      <div className="flex-1 pt-12 pb-7 flex bg-background min-h-0">
+      <div className="flex-1 pt-12 pb-7 flex flex-col md:flex-row bg-background min-h-0">
         {/* List */}
-        <div className="w-72 shrink-0 border-r border-border overflow-y-auto bg-surface/50 p-4">
+        <div className="hidden md:block w-72 shrink-0 border-r border-border overflow-y-auto bg-surface/50 p-4">
           <h2 className="font-mono text-xs tracking-[0.2em] text-accent-gold mb-4">
             SURVEILLANCE FUNDERS
           </h2>
@@ -171,7 +171,7 @@ export default function FundersPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 p-8 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <div className="max-w-4xl">
             <h1 className="font-mono text-2xl tracking-[0.15em] text-foreground mb-2">
               DEFENSE & SURVEILLANCE FUNDERS
@@ -183,7 +183,7 @@ export default function FundersPage() {
             {!loading && stats && (
               <>
                 {/* Summary stats */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
                   <div className="bg-surface border border-border rounded-lg p-4">
                     <div className="font-mono text-2xl text-accent-green mb-1">{funders.length}</div>
                     <div className="text-xs text-muted font-mono tracking-wider">TOTAL FUNDERS</div>
@@ -203,7 +203,7 @@ export default function FundersPage() {
                 {/* Type breakdown */}
                 <div className="mb-8">
                   <h3 className="font-mono text-xs tracking-[0.2em] text-muted mb-4 uppercase">Sector Breakdown</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {stats.typeBreakdown.map((tb) => (
                       <div key={tb.type} className="flex items-center justify-between bg-surface border border-border rounded px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export default function FundersPage() {
 
         {/* Right sidebar - entity detail */}
         {selectedEntity && (
-          <div className="w-96 shrink-0 border-l border-border overflow-y-auto bg-surface/50">
+          <div className="hidden md:block w-96 shrink-0 border-l border-border overflow-y-auto bg-surface/50">
             <EntityDetail
               entity={selectedEntity}
               onClose={() => selectEntity(null)}

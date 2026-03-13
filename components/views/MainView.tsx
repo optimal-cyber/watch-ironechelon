@@ -116,6 +116,7 @@ export default function MainView() {
   const [loading, setLoading] = useState(true)
   const [globeConnections, setGlobeConnections] = useState<GlobeConnection[]>([])
   const [globeMarkers, setGlobeMarkers] = useState<GlobeMarker[]>([])
+  const [mobilePanel, setMobilePanel] = useState<'globe' | 'list' | 'detail'>('globe')
 
   // Manual dynamic import — component reference stored once, never causes re-mount
   const [GlobeComponent, setGlobeComponent] = useState<ComponentType<GlobeWrapperProps> | null>(null)
@@ -152,20 +153,12 @@ export default function MainView() {
     }
   }, [searchQuery, typeFilters, sortBy, sortDirection, countryFilter])
 
-  // Fetch stats
   useEffect(() => {
-    fetch('/api/stats')
-      .then((res) => res.json())
-      .then(setStats)
-      .catch(console.error)
+    fetch('/api/stats').then((res) => res.json()).then(setStats).catch(console.error)
   }, [])
 
-  // Fetch entities on filter change
-  useEffect(() => {
-    fetchEntities()
-  }, [fetchEntities])
+  useEffect(() => { fetchEntities() }, [fetchEntities])
 
-  // Fetch selected entity detail
   useEffect(() => {
     if (!selectedEntityId) {
       setSelectedEntity(null)
@@ -173,11 +166,13 @@ export default function MainView() {
     }
     fetch(`/api/entities/${selectedEntityId}`)
       .then((res) => res.json())
-      .then(setSelectedEntity)
+      .then((data) => {
+        setSelectedEntity(data)
+        setMobilePanel('detail')
+      })
       .catch(console.error)
   }, [selectedEntityId])
 
-  // Fetch globe markers once — all countries with entity counts
   useEffect(() => {
     fetch('/api/globe-markers')
       .then((res) => res.json())
@@ -188,7 +183,6 @@ export default function MainView() {
   // Build globe connection arcs from selected entity
   useEffect(() => {
     const connections: GlobeConnection[] = []
-
     if (selectedEntity) {
       const entityCountry = selectedEntity.headquartersCountry
       if (entityCountry) {
@@ -228,17 +222,14 @@ export default function MainView() {
         }
       }
     }
-
     setGlobeConnections(connections)
   }, [selectedEntity])
 
-  // Memoize globe props to prevent Canvas re-renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedMarkers = useMemo(() => globeMarkers, [JSON.stringify(globeMarkers)])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedConnections = useMemo(() => globeConnections, [JSON.stringify(globeConnections)])
 
-  // Focus globe on selected entity's HQ
   const focusTarget = useMemo(() => {
     if (!selectedEntity?.headquartersCountry) return undefined
     return {
@@ -252,9 +243,26 @@ export default function MainView() {
       <TopNav onSearchOpen={() => setSearchOpen(true)} />
       <SearchCommand />
 
-      <div className="flex-1 flex pt-12 pb-7" style={{ minHeight: 0 }}>
-        {/* Left sidebar - Entity list */}
-        <div className="w-80 shrink-0 border-r border-border overflow-hidden flex flex-col bg-surface/50">
+      {/* Mobile tab bar */}
+      <div className="flex md:hidden pt-12 border-b border-border bg-surface/90">
+        {(['globe', 'list', 'detail'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobilePanel(tab)}
+            className={`flex-1 py-2.5 text-[10px] font-mono tracking-[0.15em] transition-colors ${
+              mobilePanel === tab
+                ? 'text-accent-red border-b-2 border-accent-red'
+                : 'text-muted-foreground'
+            }`}
+          >
+            {tab === 'globe' ? 'GLOBE' : tab === 'list' ? 'ENTITIES' : 'DETAIL'}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 flex md:pt-12 pb-7" style={{ minHeight: 0 }}>
+        {/* Left sidebar - Entity list (hidden on mobile, shown via tab) */}
+        <div className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-80 shrink-0 border-r border-border overflow-hidden flex-col bg-surface/50`}>
           {countryFilter && (
             <div className="px-3 py-2 border-b border-border bg-accent-blue/10 flex items-center justify-between">
               <span className="text-[10px] font-mono text-accent-blue tracking-wider">
@@ -274,8 +282,8 @@ export default function MainView() {
           />
         </div>
 
-        {/* Center - Globe */}
-        <div className="flex-1 relative bg-[#0B0F1A]" style={{ minHeight: 0 }}>
+        {/* Center - Globe (hidden on mobile when other panels active) */}
+        <div className={`${mobilePanel === 'globe' ? 'flex' : 'hidden'} md:flex flex-1 relative bg-[#0B0F1A]`} style={{ minHeight: 0 }}>
           {GlobeComponent ? (
             <GlobeComponent
               connections={memoizedConnections}
@@ -293,12 +301,12 @@ export default function MainView() {
           )}
         </div>
 
-        {/* Right sidebar - Detail/Overview panel */}
-        <div className="w-96 shrink-0 border-l border-border overflow-y-auto bg-surface/50">
+        {/* Right sidebar - Detail/Overview panel (hidden on mobile, shown via tab) */}
+        <div className={`${mobilePanel === 'detail' ? 'flex' : 'hidden'} md:flex w-full md:w-96 shrink-0 border-l border-border overflow-y-auto bg-surface/50`}>
           {selectedEntity ? (
             <EntityDetail
               entity={selectedEntity}
-              onClose={() => selectEntity(null)}
+              onClose={() => { selectEntity(null); setMobilePanel('globe') }}
             />
           ) : (
             <OverviewPanel stats={stats} />
