@@ -1,12 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// Comprehensive list of defense/surveillance companies known for SBIR/STTR
+// Company name → entity type for auto-creation
+const COMPANY_TYPE: Record<string, string> = {
+  // Defense tech startups
+  'Anduril': 'DEFENSE_PRIME', 'Shield AI': 'AI_ML', 'Skydio': 'SURVEILLANCE',
+  'Epirus': 'DEFENSE_PRIME', 'Scale AI': 'AI_ML', 'SpaceX': 'DEFENSE_PRIME',
+  'Firestorm': 'DEFENSE_PRIME', 'Rebellion Defense': 'AI_ML',
+  'Vannevar Labs': 'AI_ML', 'Primer AI': 'AI_ML', 'Rhombus Power': 'AI_ML',
+  'Shift5': 'CYBER_INTEL', 'Hawkeye 360': 'SURVEILLANCE', 'Capella Space': 'SURVEILLANCE',
+  'BlackSky': 'SURVEILLANCE', 'Planet Labs': 'SURVEILLANCE',
+  'Babel Street': 'SURVEILLANCE', 'Clearview AI': 'SURVEILLANCE',
+  'Dataminr': 'AI_ML', 'Voyager Labs': 'SURVEILLANCE',
+  // Defense primes
+  'Palantir': 'AI_ML', 'L3Harris': 'DEFENSE_PRIME', 'Leidos': 'DEFENSE_PRIME',
+  'SAIC': 'DEFENSE_PRIME', 'Booz Allen': 'CONSULTANCY', 'CACI': 'DEFENSE_PRIME',
+  'Raytheon': 'DEFENSE_PRIME', 'RTX': 'DEFENSE_PRIME',
+  'Northrop Grumman': 'DEFENSE_PRIME', 'Lockheed Martin': 'DEFENSE_PRIME',
+  'BAE Systems': 'DEFENSE_PRIME', 'General Dynamics': 'DEFENSE_PRIME',
+  'Boeing': 'DEFENSE_PRIME', 'ManTech': 'DEFENSE_PRIME',
+  'Textron': 'DEFENSE_PRIME', 'Elbit Systems': 'DEFENSE_PRIME',
+  'Thales': 'DEFENSE_PRIME', 'Leonardo DRS': 'DEFENSE_PRIME',
+  'Mercury Systems': 'DEFENSE_PRIME', 'Curtiss-Wright': 'DEFENSE_PRIME',
+  'Kratos': 'DEFENSE_PRIME',
+  // Cyber & surveillance
+  'CrowdStrike': 'CYBER_INTEL', 'Palo Alto Networks': 'CYBER_INTEL',
+  'Fortinet': 'CYBER_INTEL', 'SentinelOne': 'CYBER_INTEL',
+  'Recorded Future': 'CYBER_INTEL', 'Mandiant': 'CYBER_INTEL',
+  'Cellebrite': 'CYBER_INTEL', 'Verint': 'SURVEILLANCE',
+  'Cobham': 'DEFENSE_PRIME', 'Sierra Nevada': 'DEFENSE_PRIME',
+  'Dynetics': 'DEFENSE_PRIME', 'Aerojet Rocketdyne': 'DEFENSE_PRIME',
+  // More defense/dual-use
+  'Peraton': 'DEFENSE_PRIME', 'Parsons': 'DEFENSE_PRIME',
+  'KBR': 'DEFENSE_PRIME', 'Maxar': 'SURVEILLANCE',
+  'Aerovironment': 'DEFENSE_PRIME', 'Joby Aviation': 'DEFENSE_PRIME',
+  'Rocket Lab': 'DEFENSE_PRIME', 'Hermeus': 'DEFENSE_PRIME',
+  'Hadrian': 'DEFENSE_PRIME', 'Fortem Technologies': 'DEFENSE_PRIME',
+  // AI/ML and data
+  'C3 AI': 'AI_ML', 'BigBear AI': 'AI_ML', 'Dedrone': 'SURVEILLANCE',
+  'DroneShield': 'DEFENSE_PRIME', 'Govini': 'AI_ML',
+  'Two Six Technologies': 'CYBER_INTEL', 'Applied Intuition': 'AI_ML',
+  'Istari': 'AI_ML', 'Second Front': 'DEFENSE_PRIME',
+}
+
 const COMPANY_BATCHES: string[][] = [
   // Batch 0: High-profile defense tech startups
   [
     'Anduril', 'Shield AI', 'Skydio', 'Epirus', 'Scale AI',
-    'SpaceX', 'Firestorm', 'Rebellion Defense', 'Hadean',
+    'SpaceX', 'Firestorm', 'Rebellion Defense',
     'Vannevar Labs', 'Primer AI', 'Rhombus Power', 'Shift5',
     'Hawkeye 360', 'Capella Space', 'BlackSky', 'Planet Labs',
     'Babel Street', 'Clearview AI', 'Dataminr', 'Voyager Labs',
@@ -22,26 +63,20 @@ const COMPANY_BATCHES: string[][] = [
   // Batch 2: Cyber, AI, and surveillance tech
   [
     'CrowdStrike', 'Palo Alto Networks', 'Fortinet', 'SentinelOne',
-    'Recorded Future', 'Mandiant', 'FireEye', 'Tenable',
-    'Rapid7', 'Varonis', 'Darktrace', 'Dragos',
-    'Cellebrite', 'SS8 Networks', 'Verint', 'NICE Systems',
+    'Recorded Future', 'Mandiant', 'Cellebrite', 'Verint',
     'Cobham', 'Sierra Nevada', 'Dynetics', 'Aerojet Rocketdyne',
   ],
   // Batch 3: More defense/dual-use tech
   [
-    'Saab', 'Hensoldt', 'Rafael', 'IAI', 'Cognizant',
-    'Peraton', 'Parsons', 'KBR', 'Jacobs', 'Amentum',
-    'V2X', 'Maxar', 'Ball Aerospace', 'Aerovironment',
-    'Joby Aviation', 'Archer Aviation', 'Wisk', 'Relativity Space',
-    'Rocket Lab', 'Hermeus', 'Hadrian', 'Fortem Technologies',
+    'Peraton', 'Parsons', 'KBR', 'Maxar',
+    'Aerovironment', 'Joby Aviation', 'Rocket Lab', 'Hermeus',
+    'Hadrian', 'Fortem Technologies',
   ],
   // Batch 4: AI/ML and data companies
   [
-    'C3 AI', 'BigBear AI', 'Alteryx', 'Databricks', 'Snowflake',
-    'Elastic', 'Splunk', 'Confluent', 'Datadog',
-    'Two Six Technologies', 'Torch', 'Applied Intuition',
-    'Dedrone', 'DroneShield', 'Lilt', 'Govini',
-    'Rebellion', 'Istari', 'Second Front', 'Dcode',
+    'C3 AI', 'BigBear AI', 'Applied Intuition',
+    'Dedrone', 'DroneShield', 'Govini',
+    'Two Six Technologies', 'Istari', 'Second Front',
   ],
 ]
 
@@ -147,8 +182,8 @@ export async function POST(request: NextRequest) {
   const log: string[] = []
 
   for (const companyName of companies) {
-    // Find matching entity in DB
-    const entity = await prisma.entity.findFirst({
+    // Find matching entity in DB, or create one
+    let entity = await prisma.entity.findFirst({
       where: {
         OR: [
           { name: { contains: companyName } },
@@ -158,8 +193,23 @@ export async function POST(request: NextRequest) {
     })
 
     if (!entity) {
-      log.push(`Skip: no entity for "${companyName}"`)
-      continue
+      // Auto-create entity for known SBIR companies
+      const entityType = COMPANY_TYPE[companyName] || 'DEFENSE_PRIME'
+      const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      try {
+        entity = await prisma.entity.create({
+          data: {
+            name: companyName,
+            slug,
+            type: entityType,
+            description: `${companyName} — SBIR/STTR award recipient`,
+          },
+        })
+        log.push(`Created entity: ${companyName} (${entityType})`)
+      } catch {
+        log.push(`Skip: could not create entity for "${companyName}"`)
+        continue
+      }
     }
 
     let companyAdded = 0
