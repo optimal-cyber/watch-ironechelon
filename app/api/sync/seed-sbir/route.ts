@@ -139,36 +139,44 @@ function parseProgram(description: string, keyword: string): string {
   return 'SBIR'
 }
 
+const apiErrors: string[] = []
+
 async function searchSbirPage(company: string, keyword: string, page: number): Promise<{ results: USASpendingResult[], hasMore: boolean }> {
   try {
+    const body = {
+      filters: {
+        keywords: [keyword],
+        recipient_search_text: [company],
+        time_period: [{ start_date: '2005-01-01', end_date: '2026-12-31' }],
+        award_type_codes: ['A', 'B', 'C', 'D'],
+      },
+      fields: [
+        'Award ID', 'Recipient Name', 'Award Amount',
+        'Awarding Agency', 'Awarding Sub Agency',
+        'Start Date', 'End Date', 'Description', 'Award Type',
+      ],
+      limit: 50,
+      page,
+      sort: 'Award Amount',
+      order: 'desc',
+    }
     const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filters: {
-          keywords: [keyword],
-          recipient_search_text: [company],
-          time_period: [{ start_date: '2005-01-01', end_date: '2026-12-31' }],
-          award_type_codes: ['A', 'B', 'C', 'D'],
-        },
-        fields: [
-          'Award ID', 'Recipient Name', 'Award Amount',
-          'Awarding Agency', 'Awarding Sub Agency',
-          'Start Date', 'End Date', 'Description', 'Award Type',
-        ],
-        limit: 100,
-        page,
-        sort: 'Award Amount',
-        order: 'desc',
-      }),
+      body: JSON.stringify(body),
     })
-    if (!res.ok) return { results: [], hasMore: false }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      apiErrors.push(`${company}/${keyword} p${page}: HTTP ${res.status} ${text.slice(0, 100)}`)
+      return { results: [], hasMore: false }
+    }
     const data = await res.json()
     return {
       results: data.results || [],
       hasMore: data.page_metadata?.hasNext ?? false,
     }
-  } catch {
+  } catch (err) {
+    apiErrors.push(`${company}/${keyword} p${page}: ${err instanceof Error ? err.message : String(err)}`)
     return { results: [], hasMore: false }
   }
 }
@@ -325,6 +333,7 @@ export async function POST(request: NextRequest) {
     totalAdded,
     totalValue,
     log,
+    apiErrors: apiErrors.slice(0, 20),
   })
 }
 
