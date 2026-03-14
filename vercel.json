@@ -3,6 +3,10 @@
     {
       "path": "/api/sync/surveillance-watch",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/daily-sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }

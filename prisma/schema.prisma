@@ -157,3 +157,145 @@ model Submission {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+// ─── ATO Intelligence Models ───────────────────────────────────────
+
+model FedrampAuthorization {
+  id                 String    @id @default(uuid())
+  packageId          String    @unique
+  csoName            String
+  cspName            String
+  status             String    // Authorized, InProcess, Ready
+  impactLevel        String?
+  serviceModel       String    @default("[]") // JSON array
+  deploymentModel    String?
+  authorizationDate  DateTime?
+  expirationDate     DateTime?
+  sponsoringAgency   String?
+  leveragingAgencies String    @default("[]") // JSON array
+  assessorName       String?
+  authType           String?   // Agency, JAB
+  serviceDescription String?
+  website            String?
+  logo               String?
+  lastSynced         DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([status])
+  @@index([impactLevel])
+  @@index([cspName])
+  @@index([sponsoringAgency])
+  @@index([expirationDate])
+}
+
+model DodProvisionalAuth {
+  id               String    @id @default(uuid())
+  csoName          String
+  cspName          String
+  impactLevel      String    // IL2, IL4, IL5, IL6
+  paDate           DateTime?
+  paExpiration     DateTime?
+  sponsorComponent String?
+  conditions       String?
+  source           String    @default("seed") // seed, manual, scraped
+  lastSynced       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([csoName, cspName, impactLevel])
+  @@index([impactLevel])
+  @@index([cspName])
+}
+
+model EmassAuthorization {
+  id                  String    @id @default(uuid())
+  systemName          String
+  systemId            String?
+  component           String    // Army, Navy, USAF, USMC, DISA, etc.
+  authorizationType   String    // ATO, IATT, DATO, ATOwConditions
+  authorizationDate   DateTime?
+  expirationDate      DateTime?
+  impactLevel         String?
+  authorizingOfficial String?
+  issm                String?
+  isso                String?
+  systemType          String?
+  hostedLocation      String?
+  cloudProvider       String?
+  source              String    @default("manual")
+  importBatchId       String?
+  lastSynced          DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([systemName, component])
+  @@index([component])
+  @@index([impactLevel])
+  @@index([expirationDate])
+  @@index([authorizationType])
+}
+
+model AtoCompany {
+  id              String   @id @default(uuid())
+  canonicalName   String   @unique
+  aliases         String   @default("[]") // JSON array
+  cageCode        String?
+  uei             String?
+  website         String?
+  sector          String?
+  smallBusiness   Boolean  @default(false)
+  sbTypes         String   @default("[]") // JSON array
+  totalActiveAuths Int     @default(0)
+  authVelocity    Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AtoSyncLog {
+  id             String   @id @default(uuid())
+  source         String   @unique
+  lastSyncAt     DateTime @default(now())
+  recordsAdded   Int      @default(0)
+  recordsUpdated Int      @default(0)
+  recordsFailed  Int      @default(0)
+  status         String   @default("success") // success, failed, running
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FederalContract {
+  id                String    @id @default(uuid())
+  awardId           String    @unique
+  recipientName     String
+  recipientUei      String?
+  awardingAgency    String?
+  awardingSubAgency String?
+  awardAmount       Float?
+  description       String?
+  startDate         DateTime?
+  endDate           DateTime?
+  naicsCode         String?
+  atoRelevanceScore Int       @default(0)
+  lastSynced        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([awardingAgency])
+  @@index([atoRelevanceScore])
+  @@index([recipientName])
+}
+
+model AtoAlert {
+  id           String   @id @default(uuid())
+  type         String   // expiring_30d, expiring_90d, new_authorization, status_change
+  title        String
+  details      String   @default("{}") // JSON blob
+  source       String
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([acknowledged])
+  @@index([type])
+}

@@ -9,6 +9,7 @@ const navItems = [
   { href: '/network', label: 'NETWORK' },
   { href: '/funders', label: 'FUNDERS' },
   { href: '/contracts', label: 'CONTRACTS' },
+  { href: '/ato', label: 'ATO' },
   { href: '/intel', label: 'INTEL' },
   { href: '/about', label: 'ABOUT' },
 ]
