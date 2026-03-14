@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// USAspending uses legal entity names, not trade names
+// Map our display names to search terms for the API
+const SEARCH_ALIASES: Record<string, string[]> = {
+  'SpaceX': ['Space Exploration Technologies'],
+  'Raytheon': ['Raytheon', 'RTX'],
+  'RTX': ['RTX', 'Raytheon'],
+  'Booz Allen': ['Booz Allen Hamilton'],
+  'CACI': ['CACI International', 'CACI Inc'],
+  'SAIC': ['Science Applications International', 'SAIC'],
+  'ManTech': ['ManTech International', 'ManTech'],
+  'Shield AI': ['Shield AI'],
+  'Firestorm': ['Firestorm Labs', 'Firestorm Solutions'],
+  'Scale AI': ['Scale AI', 'Scale.AI'],
+  'Primer AI': ['Primer Federal', 'Primer Inc'],
+  'Planet Labs': ['Planet Labs PBC', 'Planet Federal'],
+  'Hawkeye 360': ['HawkEye 360'],
+  'Leonardo DRS': ['DRS Defense Solutions', 'Leonardo DRS'],
+  'Aerojet Rocketdyne': ['Aerojet Rocketdyne', 'L3Harris Aerojet'],
+  'BigBear AI': ['BigBear.ai', 'BigBear AI'],
+  'C3 AI': ['C3.ai', 'C3 AI Federal'],
+  'Joby Aviation': ['Joby Aviation', 'Joby Aero'],
+  'Rebellion Defense': ['Rebellion Defense'],
+  'Vannevar Labs': ['Vannevar Labs'],
+  'Applied Intuition': ['Applied Intuition'],
+  'Second Front': ['Second Front Systems'],
+}
+
 // Company name → entity type for auto-creation
 const COMPANY_TYPE: Record<string, string> = {
   // Defense tech startups
@@ -215,62 +242,67 @@ export async function POST(request: NextRequest) {
     let companyAdded = 0
     const seenAwardIds = new Set<string>()
 
-    for (const keyword of KEYWORDS) {
-      for (let page = 1; page <= PAGES_PER_SEARCH; page++) {
-        const { results, hasMore } = await searchSbirPage(companyName, keyword, page)
+    // Use aliases for USAspending search (legal names vs trade names)
+    const searchTerms = SEARCH_ALIASES[companyName] || [companyName]
 
-        for (const award of results) {
-          if (!award['Award ID']) continue
-          if (seenAwardIds.has(award['Award ID'])) continue
-          seenAwardIds.add(award['Award ID'])
+    for (const searchTerm of searchTerms) {
+      for (const keyword of KEYWORDS) {
+        for (let page = 1; page <= PAGES_PER_SEARCH; page++) {
+          const { results, hasMore } = await searchSbirPage(searchTerm, keyword, page)
 
-          // Verify the description actually mentions SBIR/STTR
-          const desc = (award['Description'] || '').toUpperCase()
-          if (!desc.includes('SBIR') && !desc.includes('STTR')) continue
+          for (const award of results) {
+            if (!award['Award ID']) continue
+            if (seenAwardIds.has(award['Award ID'])) continue
+            seenAwardIds.add(award['Award ID'])
 
-          const awardId = `SBIR-USA-${award['Award ID']}`
+            // Verify the description actually mentions SBIR/STTR
+            const desc = (award['Description'] || '').toUpperCase()
+            if (!desc.includes('SBIR') && !desc.includes('STTR')) continue
 
-          const existing = await prisma.contract.findUnique({ where: { awardId } })
-          if (existing) continue
+            const awardId = `SBIR-USA-${award['Award ID']}`
 
-          const agencyName = award['Awarding Sub Agency'] || award['Awarding Agency']
-          const agencyId = await findOrCreateAgency(agencyName)
+            const existing = await prisma.contract.findUnique({ where: { awardId } })
+            if (existing) continue
 
-          const awardDate = award['Start Date'] ? new Date(award['Start Date']) : null
-          const endDate = award['End Date'] ? new Date(award['End Date']) : null
-          const phase = parsePhase(award['Description'] || '')
-          const program = parseProgram(award['Description'] || '', keyword)
-          const year = awardDate && !isNaN(awardDate.getTime()) ? awardDate.getFullYear() : null
+            const agencyName = award['Awarding Sub Agency'] || award['Awarding Agency']
+            const agencyId = await findOrCreateAgency(agencyName)
 
-          await prisma.contract.create({
-            data: {
-              awardId,
-              entityId: entity.id,
-              agencyId,
-              description: award['Description'] || null,
-              value: award['Award Amount'] || null,
-              awardDate: awardDate && !isNaN(awardDate.getTime()) ? awardDate : null,
-              endDate: endDate && !isNaN(endDate.getTime()) ? endDate : null,
-              sbirProgram: program,
-              sbirPhase: phase,
-              sbirAgency: award['Awarding Agency'] || null,
-              sbirBranch: agencyName || null,
-              sbirAwardYear: year,
-              sources: JSON.stringify([{
-                url: `https://www.usaspending.gov/award/${award['Award ID']}`,
-                title: `${program} Award: ${(award['Description'] || '').slice(0, 80)}`,
-                domain: 'usaspending.gov',
-              }]),
-            },
-          })
-          companyAdded++
-          totalValue += award['Award Amount'] || 0
+            const awardDate = award['Start Date'] ? new Date(award['Start Date']) : null
+            const endDate = award['End Date'] ? new Date(award['End Date']) : null
+            const phase = parsePhase(award['Description'] || '')
+            const program = parseProgram(award['Description'] || '', keyword)
+            const year = awardDate && !isNaN(awardDate.getTime()) ? awardDate.getFullYear() : null
+
+            await prisma.contract.create({
+              data: {
+                awardId,
+                entityId: entity.id,
+                agencyId,
+                description: award['Description'] || null,
+                value: award['Award Amount'] || null,
+                awardDate: awardDate && !isNaN(awardDate.getTime()) ? awardDate : null,
+                endDate: endDate && !isNaN(endDate.getTime()) ? endDate : null,
+                sbirProgram: program,
+                sbirPhase: phase,
+                sbirAgency: award['Awarding Agency'] || null,
+                sbirBranch: agencyName || null,
+                sbirAwardYear: year,
+                sources: JSON.stringify([{
+                  url: `https://www.usaspending.gov/award/${award['Award ID']}`,
+                  title: `${program} Award: ${(award['Description'] || '').slice(0, 80)}`,
+                  domain: 'usaspending.gov',
+                }]),
+              },
+            })
+            companyAdded++
+            totalValue += award['Award Amount'] || 0
+          }
+
+          // Rate limit between API calls
+          await new Promise((r) => setTimeout(r, 200))
+
+          if (!hasMore) break
         }
-
-        // Rate limit between API calls
-        await new Promise((r) => setTimeout(r, 200))
-
-        if (!hasMore) break
       }
     }
 
