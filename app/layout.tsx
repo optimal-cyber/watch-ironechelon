@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import "./globals.css"
 
+const siteUrl = "https://intel.ironechelon.com"
+
 export const metadata: Metadata = {
   title: "Iron Echelon — Defense Tech Intelligence",
   description:
@@ -13,6 +15,28 @@ export const metadata: Metadata = {
     "government contracts",
     "defense industry",
   ],
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: "Iron Echelon — Defense Tech Intelligence",
+    description: "They build the weapons. It's time to map the arsenal. Track 1,700+ defense tech, cybersecurity, AI, and surveillance companies.",
+    url: siteUrl,
+    siteName: "Iron Echelon",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Iron Echelon — Mapping the Defense Tech Arsenal",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Iron Echelon — Defense Tech Intelligence",
+    description: "They build the weapons. It's time to map the arsenal. Track 1,700+ defense tech, cybersecurity, AI, and surveillance companies.",
+    images: ["/og-image.png"],
+  },
 }
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import TopNav from '@/components/layout/TopNav'
 import BottomBar from '@/components/layout/BottomBar'
 import SearchCommand from '@/components/layout/SearchCommand'
@@ -89,6 +89,7 @@ export default function ContractsPage() {
   const [tab, setTab] = useState<TabType>('contracts')
   const [sbirPhaseFilter, setSbirPhaseFilter] = useState('')
   const [sbirProgramFilter, setSbirProgramFilter] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -374,14 +375,17 @@ export default function ContractsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredContracts.map((contract) => (
+                  {filteredContracts.map((contract) => {
+                    const isExpanded = expandedId === contract.id
+                    return (
+                    <React.Fragment key={contract.id}>
                     <tr
-                      key={contract.id}
-                      className="border-b border-border/30 hover:bg-surface/50 transition-colors"
+                      onClick={() => setExpandedId(isExpanded ? null : contract.id)}
+                      className={`border-b border-border/30 hover:bg-surface/50 transition-colors cursor-pointer ${isExpanded ? 'bg-surface/50' : ''}`}
                     >
                       <td className="px-3 md:px-6 py-2">
                         <button
-                          onClick={() => selectEntity(contract.entity.id)}
+                          onClick={(e) => { e.stopPropagation(); selectEntity(contract.entity.id) }}
                           className="text-xs font-mono text-slate-300 hover:text-white transition-colors text-left"
                         >
                           {contract.entity.name}
@@ -412,7 +416,83 @@ export default function ContractsPage() {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    {isExpanded && (
+                      <tr className="bg-surface/30 border-b border-border/30">
+                        <td colSpan={5} className="px-4 md:px-8 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <div>
+                                <span className="text-[9px] font-mono text-muted tracking-wider">AWARD ID</span>
+                                <p className="text-xs font-mono text-foreground mt-0.5">{contract.awardId || '—'}</p>
+                              </div>
+                              <div>
+                                <span className="text-[9px] font-mono text-muted tracking-wider">DESCRIPTION</span>
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{contract.description || '—'}</p>
+                              </div>
+                              {contract.naicsCode && (
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">NAICS CODE</span>
+                                  <p className="text-xs font-mono text-foreground mt-0.5">{contract.naicsCode}</p>
+                                </div>
+                              )}
+                              {contract.psc && (
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">PSC</span>
+                                  <p className="text-xs font-mono text-foreground mt-0.5">{contract.psc}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <span className="text-[9px] font-mono text-muted tracking-wider">CONTRACTOR</span>
+                                <p className="text-xs font-mono text-foreground mt-0.5">{contract.entity.name}</p>
+                                <span className="text-[9px] font-mono text-accent-blue">{contract.entity.type.replace(/_/g, ' ')}</span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] font-mono text-muted tracking-wider">AWARDING AGENCY</span>
+                                <p className="text-xs font-mono text-accent-blue mt-0.5">{contract.agency?.name || 'N/A'}</p>
+                              </div>
+                              <div className="flex gap-6">
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">AWARD DATE</span>
+                                  <p className="text-xs font-mono text-foreground mt-0.5">{contract.awardDate ? formatDate(contract.awardDate) : '—'}</p>
+                                </div>
+                                {contract.endDate && (
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">END DATE</span>
+                                    <p className="text-xs font-mono text-foreground mt-0.5">{formatDate(contract.endDate)}</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">VALUE</span>
+                                  <p className="text-xs font-mono text-accent-green font-bold mt-0.5">{contract.value ? formatCurrency(contract.value) : '—'}</p>
+                                </div>
+                              </div>
+                              {contract.placeOfPerformance && (
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">PLACE OF PERFORMANCE</span>
+                                  <p className="text-xs font-mono text-foreground mt-0.5">{contract.placeOfPerformance}</p>
+                                </div>
+                              )}
+                              {contract.awardId && (
+                                <a
+                                  href={`https://www.usaspending.gov/award/${contract.awardId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-block mt-2 text-[10px] font-mono text-accent-blue border border-accent-blue/30 px-3 py-1.5 rounded hover:bg-accent-blue/10 transition-colors tracking-wider"
+                                >
+                                  VIEW ON USASPENDING.GOV
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             )
@@ -546,14 +626,17 @@ export default function ContractsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSbir.slice(0, 500).map((award) => (
+                    {filteredSbir.slice(0, 500).map((award) => {
+                      const isExpanded = expandedId === award.id
+                      return (
+                      <React.Fragment key={award.id}>
                       <tr
-                        key={award.id}
-                        className="border-b border-border/30 hover:bg-surface/50 transition-colors"
+                        onClick={() => setExpandedId(isExpanded ? null : award.id)}
+                        className={`border-b border-border/30 hover:bg-surface/50 transition-colors cursor-pointer ${isExpanded ? 'bg-surface/50' : ''}`}
                       >
                         <td className="px-3 md:px-6 py-2">
                           <button
-                            onClick={() => selectEntity(award.entity.id)}
+                            onClick={(e) => { e.stopPropagation(); selectEntity(award.entity.id) }}
                             className="text-xs font-mono text-slate-300 hover:text-white transition-colors text-left"
                           >
                             {award.entity.name}
@@ -602,7 +685,62 @@ export default function ContractsPage() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      {isExpanded && (
+                        <tr className="bg-surface/30 border-b border-border/30">
+                          <td colSpan={6} className="px-4 md:px-8 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">DESCRIPTION</span>
+                                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{award.description || '—'}</p>
+                                </div>
+                                {award.sbirTopicCode && (
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">TOPIC CODE</span>
+                                    <p className="text-xs font-mono text-foreground mt-0.5">{award.sbirTopicCode}</p>
+                                  </div>
+                                )}
+                                {award.sbirPiName && (
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">PRINCIPAL INVESTIGATOR</span>
+                                    <p className="text-xs font-mono text-foreground mt-0.5">{award.sbirPiName}</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-3">
+                                <div>
+                                  <span className="text-[9px] font-mono text-muted tracking-wider">COMPANY</span>
+                                  <p className="text-xs font-mono text-foreground mt-0.5">{award.entity.name}</p>
+                                  <span className="text-[9px] font-mono text-accent-blue">{award.entity.type.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div className="flex gap-6">
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">PROGRAM</span>
+                                    <p className="text-xs font-mono text-foreground mt-0.5">{award.sbirProgram || '—'} {award.sbirPhase ? `Phase ${award.sbirPhase}` : ''}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">AGENCY</span>
+                                    <p className="text-xs font-mono text-accent-blue mt-0.5">{award.sbirBranch || award.agency?.name || '—'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-6">
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">AWARD DATE</span>
+                                    <p className="text-xs font-mono text-foreground mt-0.5">{award.awardDate ? formatDate(award.awardDate) : '—'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-[9px] font-mono text-muted tracking-wider">VALUE</span>
+                                    <p className="text-xs font-mono text-accent-green font-bold mt-0.5">{award.value ? formatCurrency(award.value) : '—'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
