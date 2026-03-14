@@ -309,6 +309,10 @@ export async function POST(request: NextRequest) {
     totalAdded += companyAdded
     if (companyAdded > 0) {
       log.push(`${entity.name}: +${companyAdded} SBIR/STTR awards`)
+    } else if (seenAwardIds.size > 0) {
+      log.push(`${entity.name}: ${seenAwardIds.size} results found, 0 new (all existing or filtered)`)
+    } else {
+      log.push(`${entity.name}: 0 results from USAspending (searched: ${searchTerms.join(', ')})`)
     }
   }
 
