@@ -147,7 +147,7 @@ async function searchSbirPage(company: string, keyword: string, page: number): P
       filters: {
         keywords: [keyword],
         recipient_search_text: [company],
-        time_period: [{ start_date: '2005-01-01', end_date: '2026-12-31' }],
+        time_period: [{ start_date: '2007-10-01', end_date: '2026-12-31' }],
         award_type_codes: ['A', 'B', 'C', 'D'],
       },
       fields: [
