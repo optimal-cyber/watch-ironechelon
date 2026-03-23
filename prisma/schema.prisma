@@ -299,3 +299,61 @@ model AtoAlert {
   @@index([acknowledged])
   @@index([type])
 }
+
+// ─── Lobbying Disclosure Models ───────────────────────────────────
+
+model LobbyingFiling {
+  id                String    @id @default(uuid())
+  filingId          String    @unique // Senate LD filing UUID
+  registrantName    String
+  clientName        String
+  filingType        String?   // Registration, Report, Amendment
+  filingYear        Int?
+  filingPeriod      String?   // Q1, Q2, Q3, Q4, Mid-Year, Year-End
+  amount            Float?    // Reported lobbying income/expenses
+  issues            String    @default("[]") // JSON array of issue area codes
+  lobbyists         String    @default("[]") // JSON array of {name, coveredPosition}
+  governmentEntities String   @default("[]") // JSON array of agencies lobbied
+  specificIssues    String?   // Free-text description of lobbying activity
+  entityId          String?   // FK to our tracked Entity (if matched)
+  source            String    @default("senate-lda")
+  lastSynced        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([registrantName])
+  @@index([clientName])
+  @@index([filingYear])
+  @@index([entityId])
+}
+
+// ─── SAM.gov Entity Registration ──────────────────────────────────
+
+model SamRegistration {
+  id                String    @id @default(uuid())
+  uei               String    @unique // Unique Entity Identifier
+  entityName        String
+  cageCode          String?
+  duns              String?
+  physicalAddress   String?   // JSON: {line1, city, state, zip, country}
+  mailingAddress    String?   // JSON
+  congressionalDistrict String?
+  naicsCodes        String    @default("[]") // JSON array
+  pscCodes          String    @default("[]") // JSON array
+  businessTypes     String    @default("[]") // JSON array (small business flags etc)
+  entityStructure   String?   // Corporate, LLC, etc.
+  stateOfIncorp     String?
+  fiscalYearEnd     String?
+  entityUrl         String?
+  registrationDate  DateTime?
+  expirationDate    DateTime?
+  activeStatus      String?   // Active, Inactive
+  entityId          String?   // FK to our tracked Entity (if matched)
+  lastSynced        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([entityName])
+  @@index([cageCode])
+  @@index([entityId])
+}

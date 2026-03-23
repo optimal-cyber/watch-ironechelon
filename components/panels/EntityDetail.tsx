@@ -40,6 +40,18 @@ interface CountryRef {
   lon: number
 }
 
+interface LobbyingFiling {
+  id: string
+  registrantName: string
+  clientName: string
+  year: number | null
+  period: string | null
+  amount: number | null
+  issues: string[]
+  governmentEntities: string[]
+  specificIssues: string | null
+}
+
 interface EntityDetailData {
   id: string
   name: string
@@ -65,6 +77,11 @@ interface EntityDetailData {
   contracts: ContractItem[]
   connectionCount: number
   updatedAt: string
+  lobbying?: {
+    filings: LobbyingFiling[]
+    totalAmount: number
+    byYear: Record<number, number>
+  }
 }
 
 function formatCurrency(value: number): string {
@@ -405,6 +422,59 @@ export default function EntityDetail({
                   </div>
                   {contract.description && (
                     <p className="text-[10px] text-muted-foreground line-clamp-2">{contract.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lobbying Disclosures */}
+        {entity.lobbying && entity.lobbying.filings.length > 0 && (
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-mono tracking-wider text-accent-gold uppercase">
+                Lobbying Disclosures ({entity.lobbying.filings.length})
+              </span>
+              {entity.lobbying.totalAmount > 0 && (
+                <span className="text-[10px] font-mono text-accent-gold">
+                  {formatCurrency(entity.lobbying.totalAmount)} total
+                </span>
+              )}
+            </div>
+            {/* Year breakdown */}
+            {Object.keys(entity.lobbying.byYear).length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {Object.entries(entity.lobbying.byYear)
+                  .sort(([a], [b]) => Number(b) - Number(a))
+                  .map(([year, amount]) => (
+                    <div key={year} className="px-2 py-1 rounded bg-surface border border-border">
+                      <span className="text-[10px] font-mono text-muted">{year}</span>
+                      <span className="text-[10px] font-mono text-accent-gold ml-1.5">{formatCurrency(amount)}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            <div className="space-y-2">
+              {entity.lobbying.filings.slice(0, 5).map((filing) => (
+                <div key={filing.id} className="px-2 py-1.5 rounded bg-surface border border-border">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono text-muted">
+                      {filing.year} {filing.period}
+                    </span>
+                    {filing.amount && (
+                      <span className="text-[10px] font-mono text-accent-gold">{formatCurrency(filing.amount)}</span>
+                    )}
+                  </div>
+                  {filing.issues.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Issues: {filing.issues.slice(0, 3).join(', ')}
+                    </p>
+                  )}
+                  {filing.governmentEntities.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Lobbied: {filing.governmentEntities.slice(0, 3).join(', ')}
+                    </p>
                   )}
                 </div>
               ))}

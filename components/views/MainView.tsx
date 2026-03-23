@@ -93,6 +93,21 @@ interface EntityDetailData {
   }>
   connectionCount: number
   updatedAt: string
+  lobbying?: {
+    filings: Array<{
+      id: string
+      registrantName: string
+      clientName: string
+      year: number | null
+      period: string | null
+      amount: number | null
+      issues: string[]
+      governmentEntities: string[]
+      specificIssues: string | null
+    }>
+    totalAmount: number
+    byYear: Record<number, number>
+  }
 }
 
 interface GlobeConnection {

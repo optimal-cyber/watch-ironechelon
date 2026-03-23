@@ -107,6 +107,17 @@ const COMPANY_BATCHES: string[][] = [
   ],
 ]
 
+// Company HQ country (alpha2 code) — defaults to US if not listed
+const COMPANY_COUNTRY: Record<string, string> = {
+  'BAE Systems': 'GB',
+  'Thales': 'FR',
+  'Elbit Systems': 'IL',
+  'Cellebrite': 'IL',
+  'Cobham': 'GB',
+  'Leonardo DRS': 'IT',
+  'DroneShield': 'AU',
+}
+
 const ALL_COMPANIES = COMPANY_BATCHES.flat()
 const KEYWORDS = ['SBIR', 'STTR']
 const PAGES_PER_SEARCH = 3  // 3 pages × 100 results = up to 300 per company/keyword
@@ -217,20 +228,26 @@ export async function POST(request: NextRequest) {
   const log: string[] = []
 
   for (const companyName of companies) {
-    // Find matching entity in DB, or create one
+    // Find matching entity in DB, or create one — use exact match to avoid fuzzy mismatches
+    const searchSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
     let entity = await prisma.entity.findFirst({
-      where: {
-        OR: [
-          { name: { contains: companyName } },
-          { slug: { contains: companyName.toLowerCase().replace(/\s+/g, '-') } },
-        ],
-      },
+      where: { slug: searchSlug },
     })
+    if (!entity) {
+      entity = await prisma.entity.findFirst({
+        where: { name: companyName },
+      })
+    }
 
     if (!entity) {
       // Auto-create entity for known SBIR companies
       const entityType = COMPANY_TYPE[companyName] || 'DEFENSE_PRIME'
       const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+      // Look up HQ country (default to US for SBIR recipients)
+      const countryAlpha2 = COMPANY_COUNTRY[companyName] || 'US'
+      const country = await prisma.country.findUnique({ where: { alpha2: countryAlpha2 } })
+
       try {
         entity = await prisma.entity.create({
           data: {
@@ -238,12 +255,27 @@ export async function POST(request: NextRequest) {
             slug,
             type: entityType,
             description: `${companyName} — SBIR/STTR award recipient`,
+            headquartersCountryId: country?.id || null,
           },
         })
-        log.push(`Created entity: ${companyName} (${entityType})`)
+        log.push(`Created entity: ${companyName} (${entityType}, HQ: ${countryAlpha2})`)
       } catch {
         log.push(`Skip: could not create entity for "${companyName}"`)
         continue
+      }
+    }
+
+    // Backfill country if entity exists but has no HQ set
+    if (!entity.headquartersCountryId) {
+      const countryAlpha2 = COMPANY_COUNTRY[companyName] || 'US'
+      const country = await prisma.country.findUnique({ where: { alpha2: countryAlpha2 } })
+      if (country) {
+        await prisma.entity.update({
+          where: { id: entity.id },
+          data: { headquartersCountryId: country.id },
+        })
+        entity = { ...entity, headquartersCountryId: country.id }
+        log.push(`Backfilled HQ country for ${entity.name}: ${countryAlpha2}`)
       }
     }
 
