@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, memo, useEffect } from 'react'
+import { useRef, memo, useEffect, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Stars, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
@@ -132,7 +132,7 @@ function HQMarker({ lat, lon }: { lat: number; lon: number }) {
         <ringGeometry args={[0.055, 0.065, 32]} />
         <meshBasicMaterial color="#C8102E" transparent opacity={0.5} side={THREE.DoubleSide} />
       </mesh>
-      {/* Outer pulsing ring — visible when zoomed in */}
+      {/* Outer pulsing ring */}
       <mesh ref={ring3Ref}>
         <ringGeometry args={[0.08, 0.09, 32]} />
         <meshBasicMaterial color="#C8102E" transparent opacity={0.2} side={THREE.DoubleSide} />
@@ -141,7 +141,8 @@ function HQMarker({ lat, lon }: { lat: number; lon: number }) {
   )
 }
 
-// Camera controller that handles zoom + rotation to focusTarget
+// Camera controller that works WITH OrbitControls by directly positioning the camera
+// and calling controls.update() to sync OrbitControls' internal state
 function CameraController({
   focusTarget,
   groupRef,
@@ -149,94 +150,95 @@ function CameraController({
   focusTarget?: { lat: number; lon: number }
   groupRef: React.RefObject<THREE.Group | null>
 }) {
-  const { camera } = useThree()
-  const targetDistance = useRef(4.8)
-  const targetRotationY = useRef<number | null>(null)
-  const targetRotationX = useRef<number | null>(null)
+  const { camera, controls } = useThree()
+  const targetCameraPos = useRef(new THREE.Vector3(0, 0, 4.8))
+  const isAnimating = useRef(false)
   const isAutoRotating = useRef(true)
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const disableOrbitControls = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ctrl = controls as any
+    if (ctrl) ctrl.enabled = false
+  }, [controls])
+
+  const enableOrbitControls = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ctrl = controls as any
+    if (ctrl) ctrl.enabled = true
+  }, [controls])
+
+  const syncOrbitControls = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ctrl = controls as any
+    if (ctrl && ctrl.update) {
+      // Sync OrbitControls internal state to match our camera position
+      ctrl.target.set(0, 0, 0)
+      ctrl.update()
+    }
+  }, [controls])
 
   useEffect(() => {
     if (resumeTimer.current) clearTimeout(resumeTimer.current)
 
     if (!focusTarget) {
       // Zoom back out
-      targetDistance.current = 4.8
+      targetCameraPos.current.set(0, 0, 4.8)
+      isAnimating.current = true
       isAutoRotating.current = true
-      targetRotationY.current = null
-      targetRotationX.current = null
+
+      // Re-enable orbit controls after zoom-out animation
+      resumeTimer.current = setTimeout(() => {
+        enableOrbitControls()
+        isAnimating.current = false
+      }, 2000)
       return
     }
 
-    // Calculate rotation to face the target
-    const [x, , z] = latLonToVector3(focusTarget.lat, focusTarget.lon, 1.2)
-    targetRotationY.current = Math.atan2(-x, z)
+    // Calculate camera position looking at the target on the globe surface
+    // Position camera along the vector from globe center through the target point
+    const [x, y, z] = latLonToVector3(focusTarget.lat, focusTarget.lon, 2.4)
+    targetCameraPos.current.set(x, y, z)
 
-    // Tilt globe to latitude — brings the target closer to screen center
-    const latRad = (focusTarget.lat * Math.PI) / 180
-    targetRotationX.current = -latRad * 0.35
-
-    // Zoom in aggressively to see the location
-    targetDistance.current = 2.2
-
-    // Stop auto-rotation while focused
+    // Disable OrbitControls so we have full control during animation
+    disableOrbitControls()
+    isAnimating.current = true
     isAutoRotating.current = false
 
-    // Resume auto-rotate after 20 seconds
+    // Re-enable OrbitControls after animation settles (user can then manually rotate)
     resumeTimer.current = setTimeout(() => {
-      isAutoRotating.current = true
-      targetRotationY.current = null
-      targetRotationX.current = null
-    }, 20000)
+      syncOrbitControls()
+      enableOrbitControls()
+      isAnimating.current = false
+
+      // Resume auto-rotate much later
+      resumeTimer.current = setTimeout(() => {
+        isAutoRotating.current = true
+      }, 30000)
+    }, 3000)
 
     return () => {
       if (resumeTimer.current) clearTimeout(resumeTimer.current)
     }
-  }, [focusTarget])
+  }, [focusTarget, disableOrbitControls, enableOrbitControls, syncOrbitControls])
 
   useFrame((_, delta) => {
     const group = groupRef.current
     if (!group) return
 
-    // Smoothly animate camera distance (zoom)
-    const currentPos = camera.position.clone()
-    const currentDist = currentPos.length()
-    const speed = targetDistance.current < currentDist ? 1.8 : 2.5 // Zoom in slower for cinematic feel
-    const newDist = THREE.MathUtils.lerp(currentDist, targetDistance.current, delta * speed)
-    camera.position.normalize().multiplyScalar(newDist)
+    if (isAnimating.current) {
+      // Smoothly lerp camera to target position
+      camera.position.lerp(targetCameraPos.current, delta * 1.8)
+      camera.lookAt(0, 0, 0)
 
-    // Smoothly rotate globe Y (longitude)
-    if (targetRotationY.current !== null) {
-      const current = group.rotation.y
-      let target = targetRotationY.current
+      // Ease globe rotation to 0 so we see the correct hemisphere
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, 0, delta * 2)
+      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, 0, delta * 2)
 
-      // Shortest path
-      let diff = target - current
-      while (diff > Math.PI) diff -= Math.PI * 2
-      while (diff < -Math.PI) diff += Math.PI * 2
-      target = current + diff
-
-      group.rotation.y = THREE.MathUtils.lerp(current, target, delta * 3)
-
-      if (Math.abs(diff) < 0.01) {
-        group.rotation.y = targetRotationY.current
-        targetRotationY.current = null
-      }
-    } else if (isAutoRotating.current) {
+      // Sync orbit controls to keep them in sync with our animation
+      syncOrbitControls()
+    } else if (isAutoRotating.current && !focusTarget) {
       group.rotation.y += delta * 0.05
-    }
-
-    // Smoothly tilt globe X (latitude) for better framing
-    if (targetRotationX.current !== null) {
-      const currentX = group.rotation.x
-      const targetX = targetRotationX.current
-      group.rotation.x = THREE.MathUtils.lerp(currentX, targetX, delta * 2)
-      if (Math.abs(targetX - currentX) < 0.005) {
-        group.rotation.x = targetX
-      }
-    } else {
-      // Ease back to 0 tilt
-      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, 0, delta * 1.5)
     }
   })
 
