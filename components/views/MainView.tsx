@@ -132,6 +132,7 @@ export default function MainView() {
   const [globeConnections, setGlobeConnections] = useState<GlobeConnection[]>([])
   const [globeMarkers, setGlobeMarkers] = useState<GlobeMarker[]>([])
   const [mobilePanel, setMobilePanel] = useState<'globe' | 'list' | 'detail'>('globe')
+  const [hqCoords, setHqCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Manual dynamic import — component reference stored once, never causes re-mount
   const [GlobeComponent, setGlobeComponent] = useState<ComponentType<GlobeWrapperProps> | null>(null)
@@ -177,13 +178,35 @@ export default function MainView() {
   useEffect(() => {
     if (!selectedEntityId) {
       setSelectedEntity(null)
+      setHqCoords(null)
       return
     }
     fetch(`/api/entities/${selectedEntityId}`)
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         setSelectedEntity(data)
         setMobilePanel('detail')
+
+        // Geocode the headquarters city for precise globe positioning
+        if (data.headquartersCity) {
+          try {
+            const params = new URLSearchParams({ city: data.headquartersCity })
+            if (data.headquartersCountry?.name) {
+              params.set('country', data.headquartersCountry.name)
+            }
+            const geoRes = await fetch(`/api/geocode?${params}`)
+            const geo = await geoRes.json()
+            if (geo.lat && geo.lon) {
+              setHqCoords({ lat: geo.lat, lon: geo.lon })
+            } else {
+              setHqCoords(null)
+            }
+          } catch {
+            setHqCoords(null)
+          }
+        } else {
+          setHqCoords(null)
+        }
       })
       .catch(console.error)
   }, [selectedEntityId])
@@ -246,12 +269,17 @@ export default function MainView() {
   const memoizedConnections = useMemo(() => globeConnections, [JSON.stringify(globeConnections)])
 
   const focusTarget = useMemo(() => {
+    // Prefer geocoded city-level coordinates for precise zoom
+    if (hqCoords) {
+      return { lat: hqCoords.lat, lon: hqCoords.lon }
+    }
+    // Fall back to country centroid
     if (!selectedEntity?.headquartersCountry) return undefined
     return {
       lat: selectedEntity.headquartersCountry.latitude,
       lon: selectedEntity.headquartersCountry.longitude,
     }
-  }, [selectedEntity?.headquartersCountry?.latitude, selectedEntity?.headquartersCountry?.longitude])
+  }, [hqCoords, selectedEntity?.headquartersCountry])
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">

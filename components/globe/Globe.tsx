@@ -90,38 +90,52 @@ const GlobeOverlays = memo(function GlobeOverlays({
 function HQMarker({ lat, lon }: { lat: number; lon: number }) {
   const ringRef = useRef<THREE.Mesh>(null)
   const ring2Ref = useRef<THREE.Mesh>(null)
-  const position = latLonToVector3(lat, lon, 1.22)
+  const ring3Ref = useRef<THREE.Mesh>(null)
+  const position = latLonToVector3(lat, lon, 1.215)
+
+  // Make marker face outward from globe surface
+  const normal = new THREE.Vector3(...position).normalize()
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime()
     if (ringRef.current) {
       const scale = 1 + Math.sin(t * 3) * 0.3
       ringRef.current.scale.set(scale, scale, scale)
-      ;(ringRef.current.material as THREE.MeshBasicMaterial).opacity = 0.8 - Math.sin(t * 3) * 0.3
+      ;(ringRef.current.material as THREE.MeshBasicMaterial).opacity = 0.9 - Math.sin(t * 3) * 0.3
     }
     if (ring2Ref.current) {
       const scale = 1.5 + Math.sin(t * 2) * 0.5
       ring2Ref.current.scale.set(scale, scale, scale)
-      ;(ring2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.4 - Math.sin(t * 2) * 0.2
+      ;(ring2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.5 - Math.sin(t * 2) * 0.2
+    }
+    if (ring3Ref.current) {
+      const scale = 2.2 + Math.sin(t * 1.5) * 0.8
+      ring3Ref.current.scale.set(scale, scale, scale)
+      ;(ring3Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.2 - Math.sin(t * 1.5) * 0.1
     }
   })
 
   return (
-    <group position={position}>
+    <group position={position} onUpdate={(self) => self.lookAt(normal.clone().multiplyScalar(2))}>
       {/* Center dot */}
       <mesh>
-        <sphereGeometry args={[0.015, 16, 16]} />
+        <sphereGeometry args={[0.018, 16, 16]} />
         <meshBasicMaterial color="#C8102E" />
       </mesh>
       {/* Inner pulsing ring */}
       <mesh ref={ringRef}>
-        <ringGeometry args={[0.025, 0.035, 32]} />
-        <meshBasicMaterial color="#C8102E" transparent opacity={0.8} side={THREE.DoubleSide} />
+        <ringGeometry args={[0.03, 0.042, 32]} />
+        <meshBasicMaterial color="#C8102E" transparent opacity={0.9} side={THREE.DoubleSide} />
       </mesh>
-      {/* Outer pulsing ring */}
+      {/* Mid pulsing ring */}
       <mesh ref={ring2Ref}>
-        <ringGeometry args={[0.045, 0.055, 32]} />
-        <meshBasicMaterial color="#C8102E" transparent opacity={0.4} side={THREE.DoubleSide} />
+        <ringGeometry args={[0.055, 0.065, 32]} />
+        <meshBasicMaterial color="#C8102E" transparent opacity={0.5} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Outer pulsing ring — visible when zoomed in */}
+      <mesh ref={ring3Ref}>
+        <ringGeometry args={[0.08, 0.09, 32]} />
+        <meshBasicMaterial color="#C8102E" transparent opacity={0.2} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -138,6 +152,7 @@ function CameraController({
   const { camera } = useThree()
   const targetDistance = useRef(4.8)
   const targetRotationY = useRef<number | null>(null)
+  const targetRotationX = useRef<number | null>(null)
   const isAutoRotating = useRef(true)
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -149,6 +164,7 @@ function CameraController({
       targetDistance.current = 4.8
       isAutoRotating.current = true
       targetRotationY.current = null
+      targetRotationX.current = null
       return
     }
 
@@ -156,17 +172,22 @@ function CameraController({
     const [x, , z] = latLonToVector3(focusTarget.lat, focusTarget.lon, 1.2)
     targetRotationY.current = Math.atan2(-x, z)
 
-    // Zoom in gently
-    targetDistance.current = 3.6
+    // Tilt globe to latitude — brings the target closer to screen center
+    const latRad = (focusTarget.lat * Math.PI) / 180
+    targetRotationX.current = -latRad * 0.35
+
+    // Zoom in aggressively to see the location
+    targetDistance.current = 2.2
 
     // Stop auto-rotation while focused
     isAutoRotating.current = false
 
-    // Resume auto-rotate after 8 seconds
+    // Resume auto-rotate after 20 seconds
     resumeTimer.current = setTimeout(() => {
       isAutoRotating.current = true
       targetRotationY.current = null
-    }, 8000)
+      targetRotationX.current = null
+    }, 20000)
 
     return () => {
       if (resumeTimer.current) clearTimeout(resumeTimer.current)
@@ -180,10 +201,11 @@ function CameraController({
     // Smoothly animate camera distance (zoom)
     const currentPos = camera.position.clone()
     const currentDist = currentPos.length()
-    const newDist = THREE.MathUtils.lerp(currentDist, targetDistance.current, delta * 2)
+    const speed = targetDistance.current < currentDist ? 1.8 : 2.5 // Zoom in slower for cinematic feel
+    const newDist = THREE.MathUtils.lerp(currentDist, targetDistance.current, delta * speed)
     camera.position.normalize().multiplyScalar(newDist)
 
-    // Smoothly rotate globe to target
+    // Smoothly rotate globe Y (longitude)
     if (targetRotationY.current !== null) {
       const current = group.rotation.y
       let target = targetRotationY.current
@@ -202,6 +224,19 @@ function CameraController({
       }
     } else if (isAutoRotating.current) {
       group.rotation.y += delta * 0.05
+    }
+
+    // Smoothly tilt globe X (latitude) for better framing
+    if (targetRotationX.current !== null) {
+      const currentX = group.rotation.x
+      const targetX = targetRotationX.current
+      group.rotation.x = THREE.MathUtils.lerp(currentX, targetX, delta * 2)
+      if (Math.abs(targetX - currentX) < 0.005) {
+        group.rotation.x = targetX
+      }
+    } else {
+      // Ease back to 0 tilt
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, 0, delta * 1.5)
     }
   })
 

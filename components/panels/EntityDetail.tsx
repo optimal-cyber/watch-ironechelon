@@ -160,15 +160,25 @@ export default function EntityDetail({
           </button>
         </div>
 
-        {/* Location + updated */}
-        <div className="text-xs text-muted mb-2 font-mono">
-          {entity.headquartersCountry && (
-            <span className="uppercase">{entity.headquartersCountry.name}</span>
-          )}
-          {entity.headquartersCity && (
-            <span> &middot; {entity.headquartersCity}</span>
-          )}
-        </div>
+        {/* Headquarters location */}
+        {(entity.headquartersCity || entity.headquartersCountry) && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <svg className="w-3.5 h-3.5 text-accent-red shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+            </svg>
+            <div className="text-xs font-mono text-foreground">
+              {entity.headquartersCity && (
+                <span>{entity.headquartersCity}</span>
+              )}
+              {entity.headquartersCity && entity.headquartersCountry && (
+                <span className="text-muted"> &middot; </span>
+              )}
+              {entity.headquartersCountry && (
+                <span className="text-muted-foreground uppercase">{entity.headquartersCountry.name}</span>
+              )}
+            </div>
+          </div>
+        )}
         <div className="text-[10px] text-muted font-mono">
           Updated {new Date(entity.updatedAt).toUTCString().replace(' GMT', ' UTC')}
         </div>
