@@ -122,8 +122,9 @@ export default function GlobeWrapper({
               })
             }}
           >
-            <ambientLight intensity={0.6} />
-            <directionalLight position={[5, 3, 5]} intensity={0.8} />
+            <ambientLight intensity={0.3} />
+            <directionalLight position={[5, 1.5, 4]} intensity={1.2} />
+            <directionalLight position={[-3, -1, -2]} intensity={0.15} color="#4A7C9B" />
 
             <Suspense fallback={null}>
               <MemoGlobe

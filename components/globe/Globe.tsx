@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, memo, useEffect, useCallback } from 'react'
+import { useRef, memo, useEffect, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Stars, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
@@ -35,23 +35,78 @@ interface GlobeMarker {
 }
 
 const EarthSphere = memo(function EarthSphere() {
-  const texture = useTexture('/textures/earth-night.jpg')
+  const [dayMap, nightMap] = useTexture([
+    '/textures/earth-blue-marble.jpg',
+    '/textures/earth-night-2k.jpg',
+  ])
+
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        dayTexture: { value: dayMap },
+        nightTexture: { value: nightMap },
+        sunDirection: { value: new THREE.Vector3(1, 0.3, 0.8).normalize() },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D dayTexture;
+        uniform sampler2D nightTexture;
+        uniform vec3 sunDirection;
+
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          vec3 worldNormal = normalize(vWorldPosition);
+          float sunDot = dot(worldNormal, sunDirection);
+
+          // Smooth day/night transition
+          float dayFactor = smoothstep(-0.15, 0.25, sunDot);
+
+          vec3 dayColor = texture2D(dayTexture, vUv).rgb;
+          vec3 nightColor = texture2D(nightTexture, vUv).rgb;
+
+          // Darken the day side slightly for that SurveillanceWatch look
+          dayColor *= 0.75 + 0.25 * dayFactor;
+
+          // Boost night city lights
+          nightColor *= 1.8;
+
+          // Blend: day side shows geography, night side shows city lights
+          vec3 color = mix(nightColor, dayColor, dayFactor);
+
+          // Add subtle blue tint to ocean/dark areas (surveillance aesthetic)
+          float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+          vec3 blueTint = vec3(0.05, 0.08, 0.15);
+          color = color + blueTint * (1.0 - luminance) * 0.4;
+
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    })
+  }, [dayMap, nightMap])
+
   return (
-    <mesh>
+    <mesh material={material}>
       <sphereGeometry args={[1.2, 64, 64]} />
-      <meshStandardMaterial
-        map={texture}
-        emissiveMap={texture}
-        emissive={new THREE.Color('#ffffff')}
-        emissiveIntensity={1.5}
-        roughness={1}
-        metalness={0}
-      />
     </mesh>
   )
 })
 
-useTexture.preload('/textures/earth-night.jpg')
+useTexture.preload('/textures/earth-blue-marble.jpg')
+useTexture.preload('/textures/earth-night-2k.jpg')
 
 const GlobeOverlays = memo(function GlobeOverlays({
   connections,
