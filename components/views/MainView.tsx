@@ -133,6 +133,7 @@ export default function MainView() {
   const [globeMarkers, setGlobeMarkers] = useState<GlobeMarker[]>([])
   const [mobilePanel, setMobilePanel] = useState<'globe' | 'list' | 'detail'>('globe')
   const [hqCoords, setHqCoords] = useState<{ lat: number; lon: number } | null>(null)
+  const [instantFocus, setInstantFocus] = useState<{ lat: number; lon: number } | null>(null)
 
   // Manual dynamic import — component reference stored once, never causes re-mount
   const [GlobeComponent, setGlobeComponent] = useState<ComponentType<GlobeWrapperProps> | null>(null)
@@ -179,10 +180,20 @@ export default function MainView() {
     if (!selectedEntityId) {
       setSelectedEntity(null)
       setHqCoords(null)
+      setInstantFocus(null)
       return
     }
 
-    // Clear stale geocode immediately so country-centroid fallback kicks in fast
+    // Zoom globe IMMEDIATELY using country data we already have from the entity list
+    const listEntity = entities.find((e) => e.id === selectedEntityId)
+    if (listEntity?.headquartersCountry) {
+      setInstantFocus({
+        lat: listEntity.headquartersCountry.latitude,
+        lon: listEntity.headquartersCountry.longitude,
+      })
+    } else {
+      setInstantFocus(null)
+    }
     setHqCoords(null)
 
     fetch(`/api/entities/${selectedEntityId}`)
@@ -268,17 +279,23 @@ export default function MainView() {
   const memoizedConnections = useMemo(() => globeConnections, [JSON.stringify(globeConnections)])
 
   const focusTarget = useMemo(() => {
-    // Prefer geocoded city-level coordinates for precise zoom
+    // 1. Best: geocoded city-level coordinates
     if (hqCoords) {
       return { lat: hqCoords.lat, lon: hqCoords.lon }
     }
-    // Fall back to country centroid
-    if (!selectedEntity?.headquartersCountry) return undefined
-    return {
-      lat: selectedEntity.headquartersCountry.latitude,
-      lon: selectedEntity.headquartersCountry.longitude,
+    // 2. Good: country from detail API
+    if (selectedEntity?.headquartersCountry) {
+      return {
+        lat: selectedEntity.headquartersCountry.latitude,
+        lon: selectedEntity.headquartersCountry.longitude,
+      }
     }
-  }, [hqCoords, selectedEntity?.headquartersCountry])
+    // 3. Instant: country from entity list (available before detail API returns)
+    if (instantFocus) {
+      return instantFocus
+    }
+    return undefined
+  }, [hqCoords, selectedEntity?.headquartersCountry, instantFocus])
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">

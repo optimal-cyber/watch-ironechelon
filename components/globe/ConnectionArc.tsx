@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { latLonToVector3 } from './Globe'
@@ -26,11 +26,11 @@ export default function ConnectionArc({
   target: { lat: number; lon: number }
   type: string
 }) {
-  const lineRef = useRef<THREE.Line>(null)
-  const drawProgress = useRef(0) // 0 → 1 draw-in animation
+  const drawProgress = useRef(0)
   const color = ARC_COLORS[type] || ARC_COLORS.DEFAULT
+  const totalPoints = 80
 
-  const { positions, opacities, totalPoints } = useMemo(() => {
+  const curvePoints = useMemo(() => {
     const start = new THREE.Vector3(...latLonToVector3(source.lat, source.lon, 1.21))
     const end = new THREE.Vector3(...latLonToVector3(target.lat, target.lon, 1.21))
 
@@ -39,34 +39,19 @@ export default function ConnectionArc({
     mid.normalize().multiplyScalar(1.21 + dist * 0.3)
 
     const curve = new THREE.QuadraticBezierCurve3(start, mid, end)
-    const n = 80
-    const pts = curve.getPoints(n)
+    return curve.getPoints(totalPoints)
+  }, [source.lat, source.lon, target.lat, target.lon])
 
-    const pos = new Float32Array(n * 3)
-    const alpha = new Float32Array(n)
-    for (let i = 0; i < n; i++) {
-      pos[i * 3] = pts[i].x
-      pos[i * 3 + 1] = pts[i].y
-      pos[i * 3 + 2] = pts[i].z
-      alpha[i] = 0
-    }
-    return { positions: pos, opacities: alpha, totalPoints: n }
-  }, [source, target])
-
-  const geometry = useMemo(() => {
+  // Stable line object — created once, mutated via useFrame
+  const lineObj = useMemo(() => {
     const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geo.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1))
-    return geo
-  }, [positions, opacities])
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(totalPoints * 3), 3))
+    geo.setAttribute('aOpacity', new THREE.BufferAttribute(new Float32Array(totalPoints), 1))
 
-  const material = useMemo(() => {
-    return new THREE.ShaderMaterial({
+    const mat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      uniforms: {
-        uColor: { value: new THREE.Color(color) },
-      },
+      uniforms: { uColor: { value: new THREE.Color(color) } },
       vertexShader: `
         attribute float aOpacity;
         varying float vOpacity;
@@ -83,53 +68,58 @@ export default function ConnectionArc({
         }
       `,
     })
-  }, [color])
+
+    return new THREE.Line(geo, mat)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Intentionally stable — color/geometry updated in useFrame
+
+  // Update color uniform when type changes
+  useEffect(() => {
+    const mat = lineObj.material as THREE.ShaderMaterial
+    mat.uniforms.uColor.value.set(color)
+  }, [color, lineObj])
+
+  // Reset draw-in when arc source/target changes
+  useEffect(() => {
+    drawProgress.current = 0
+  }, [curvePoints])
 
   useFrame((_, delta) => {
-    if (!lineRef.current) return
-    const geo = lineRef.current.geometry
-    const attr = geo.getAttribute('aOpacity') as THREE.BufferAttribute
-    if (!attr) return
+    const geo = lineObj.geometry
 
-    // Draw-in: ramp progress from 0 → 1 over ~0.8s
     if (drawProgress.current < 1) {
       drawProgress.current = Math.min(1, drawProgress.current + delta * 1.25)
     }
 
     const drawnCount = Math.floor(drawProgress.current * totalPoints)
-    const t = performance.now() * 0.001 // seconds
+    const t = performance.now() * 0.001
 
-    // Traveling pulse — a bright window slides along the arc
     const pulseLen = 0.18
     const pulseSpeed = 0.6
-    const pulseCenter = ((t * pulseSpeed) % 1.3) - 0.15 // loop with gap
+    const pulseCenter = ((t * pulseSpeed) % 1.3) - 0.15
+
+    const positions = geo.getAttribute('position') as THREE.BufferAttribute
+    const opacities = geo.getAttribute('aOpacity') as THREE.BufferAttribute
 
     for (let i = 0; i < totalPoints; i++) {
+      positions.setXYZ(i, curvePoints[i].x, curvePoints[i].y, curvePoints[i].z)
+
       if (i >= drawnCount) {
-        attr.array[i] = 0
+        opacities.array[i] = 0
         continue
       }
 
       const frac = i / totalPoints
-      // Base opacity: fade in from source, fade out at tip
       const base = 0.35 * Math.sin(frac * Math.PI)
-
-      // Traveling pulse contribution
       const distToPulse = Math.abs(frac - pulseCenter)
       const pulse = Math.max(0, 1 - distToPulse / pulseLen) * 0.55
 
-      attr.array[i] = Math.min(1, base + pulse)
+      opacities.array[i] = Math.min(1, base + pulse)
     }
 
-    attr.needsUpdate = true
+    positions.needsUpdate = true
+    opacities.needsUpdate = true
   })
 
-  // Reset draw progress when connections change
-  useMemo(() => {
-    drawProgress.current = 0
-  }, [source, target])
-
-  return (
-    <primitive object={new THREE.Line(geometry, material)} ref={lineRef} />
-  )
+  return <primitive object={lineObj} />
 }
