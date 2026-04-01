@@ -181,31 +181,30 @@ export default function MainView() {
       setHqCoords(null)
       return
     }
+
+    // Clear stale geocode immediately so country-centroid fallback kicks in fast
+    setHqCoords(null)
+
     fetch(`/api/entities/${selectedEntityId}`)
       .then((res) => res.json())
-      .then(async (data) => {
+      .then((data) => {
         setSelectedEntity(data)
         setMobilePanel('detail')
 
-        // Geocode the headquarters city for precise globe positioning
+        // Fire-and-forget geocode refinement — globe already zoomed to country centroid
         if (data.headquartersCity) {
-          try {
-            const params = new URLSearchParams({ city: data.headquartersCity })
-            if (data.headquartersCountry?.name) {
-              params.set('country', data.headquartersCountry.name)
-            }
-            const geoRes = await fetch(`/api/geocode?${params}`)
-            const geo = await geoRes.json()
-            if (geo.lat && geo.lon) {
-              setHqCoords({ lat: geo.lat, lon: geo.lon })
-            } else {
-              setHqCoords(null)
-            }
-          } catch {
-            setHqCoords(null)
+          const params = new URLSearchParams({ city: data.headquartersCity })
+          if (data.headquartersCountry?.name) {
+            params.set('country', data.headquartersCountry.name)
           }
-        } else {
-          setHqCoords(null)
+          fetch(`/api/geocode?${params}`)
+            .then((r) => r.json())
+            .then((geo) => {
+              if (geo.lat && geo.lon) {
+                setHqCoords({ lat: geo.lat, lon: geo.lon })
+              }
+            })
+            .catch(() => {})
         }
       })
       .catch(console.error)
