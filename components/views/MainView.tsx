@@ -197,12 +197,16 @@ export default function MainView() {
         setSelectedEntity(data)
         setMobilePanel('detail')
 
-        // Update focus from detail data (more reliable than list data)
+        // Pick best available focus point: HQ > first surveilling country > first providingTo country
         if (data.headquartersCountry) {
           setFocusTarget({
             lat: data.headquartersCountry.latitude,
             lon: data.headquartersCountry.longitude,
           })
+        } else if (data.surveilling?.length > 0) {
+          setFocusTarget({ lat: data.surveilling[0].lat, lon: data.surveilling[0].lon })
+        } else if (data.providingTo?.length > 0) {
+          setFocusTarget({ lat: data.providingTo[0].lat, lon: data.providingTo[0].lon })
         }
 
         // Refine to city-level in background
@@ -236,18 +240,27 @@ export default function MainView() {
   useEffect(() => {
     const connections: GlobeConnection[] = []
     if (selectedEntity) {
-      const entityCountry = selectedEntity.headquartersCountry
-      if (entityCountry) {
+      // Use HQ as arc source; fall back to first surveilling/providingTo country
+      const hq = selectedEntity.headquartersCountry
+      const hqPoint = hq
+        ? { lat: hq.latitude, lon: hq.longitude }
+        : selectedEntity.surveilling?.[0]
+          ? { lat: selectedEntity.surveilling[0].lat, lon: selectedEntity.surveilling[0].lon }
+          : selectedEntity.providingTo?.[0]
+            ? { lat: selectedEntity.providingTo[0].lat, lon: selectedEntity.providingTo[0].lon }
+            : null
+
+      if (hqPoint) {
         for (const country of selectedEntity.providingTo || []) {
           connections.push({
-            source: { lat: entityCountry.latitude, lon: entityCountry.longitude },
+            source: hqPoint,
             target: { lat: country.lat, lon: country.lon },
             type: 'SUPPLIES_TO',
           })
         }
         for (const country of selectedEntity.surveilling || []) {
           connections.push({
-            source: { lat: entityCountry.latitude, lon: entityCountry.longitude },
+            source: hqPoint,
             target: { lat: country.lat, lon: country.lon },
             type: 'SURVEILLING',
           })
@@ -257,7 +270,7 @@ export default function MainView() {
           if (sourceCountry) {
             connections.push({
               source: { lat: sourceCountry.latitude, lon: sourceCountry.longitude },
-              target: { lat: entityCountry.latitude, lon: entityCountry.longitude },
+              target: hqPoint,
               type: 'FUNDED_BY',
             })
           }
@@ -266,7 +279,7 @@ export default function MainView() {
           const targetCountry = conn.targetEntity?.headquartersCountry
           if (targetCountry) {
             connections.push({
-              source: { lat: entityCountry.latitude, lon: entityCountry.longitude },
+              source: hqPoint,
               target: { lat: targetCountry.latitude, lon: targetCountry.longitude },
               type: conn.connectionType,
             })
