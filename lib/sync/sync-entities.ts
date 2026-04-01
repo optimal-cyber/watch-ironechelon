@@ -69,6 +69,8 @@ async function upsertEntity(
     sources: Array<{ url: string; title: string; domain: string }>
     website: string | null
     fundingType: string | null
+    providingTo: Array<{ name: string; slug: string; lat: number; lon: number }>
+    surveilling: Array<{ name: string; slug: string; lat: number; lon: number }>
   }>
 ) {
   // Find country by slug
@@ -79,6 +81,9 @@ async function upsertEntity(
     })
     countryId = country?.id || null
   }
+
+  const providingToJson = JSON.stringify(data.providingTo || [])
+  const surveillingJson = JSON.stringify(data.surveilling || [])
 
   return prisma.entity.upsert({
     where: { externalId },
@@ -93,6 +98,8 @@ async function upsertEntity(
       sources: JSON.stringify(data.sources || []),
       website: data.website,
       fundingType: data.fundingType,
+      providingTo: providingToJson,
+      surveilling: surveillingJson,
     },
     create: {
       name,
@@ -107,6 +114,8 @@ async function upsertEntity(
       sources: JSON.stringify(data.sources || []),
       website: data.website,
       fundingType: data.fundingType,
+      providingTo: providingToJson,
+      surveilling: surveillingJson,
     },
   })
 }
@@ -142,6 +151,20 @@ export async function syncEntities() {
       ? sw.headquartersCity
       : (sw.headquartersCity as { name?: string } | null)?.name || null
 
+    // Convert SW country arrays to {name, slug, lat, lon} format for globe arcs
+    const providingTo = (sw.providingTo || []).map((c) => ({
+      name: c.name,
+      slug: c.slug,
+      lat: c.latitude,
+      lon: c.longitude,
+    }))
+    const surveilling = (sw.surveilling || []).map((c) => ({
+      name: c.name,
+      slug: c.slug,
+      lat: c.latitude,
+      lon: c.longitude,
+    }))
+
     const entity = await upsertEntity(
       sw.name,
       slugify(sw.name),
@@ -156,6 +179,8 @@ export async function syncEntities() {
         sources,
         website,
         fundingType: 'private',
+        providingTo,
+        surveilling,
       }
     )
 
