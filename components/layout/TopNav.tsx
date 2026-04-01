@@ -71,14 +71,6 @@ export default function TopNav({ onSearchOpen }: { onSearchOpen?: () => void }) 
           >
             NEWSLETTER
           </a>
-          <a
-            href="https://donate.dair-institute.org/page/surveillance-watch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono tracking-wider text-[#2ECC71] rounded border border-[#2ECC71]/30 hover:bg-[#2ECC71]/10 hover:border-[#2ECC71]/50 transition-colors"
-          >
-            DONATE
-          </a>
 
           {/* Mobile hamburger */}
           <button
@@ -129,14 +121,6 @@ export default function TopNav({ onSearchOpen }: { onSearchOpen?: () => void }) 
               className="px-4 py-3 text-sm font-mono tracking-wider text-accent-gold hover:bg-accent-gold/10 rounded transition-colors"
             >
               NEWSLETTER
-            </a>
-            <a
-              href="https://donate.dair-institute.org/page/surveillance-watch"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-3 text-sm font-mono tracking-wider text-[#2ECC71] hover:bg-[#2ECC71]/10 rounded transition-colors"
-            >
-              DONATE
             </a>
           </div>
         </div>
