@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, Component, type ReactNode, useState, useEffect, useRef, memo } from 'react'
+import { Suspense, Component, type ReactNode, useState, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Preload } from '@react-three/drei'
 import Globe from './Globe'
@@ -60,8 +60,7 @@ const CAMERA = { position: [0, 0, 4.8] as [number, number, number], fov: 45 }
 const GL = { antialias: true, alpha: true, powerPreference: 'default' as const }
 const STYLE = { background: '#0B0F1A' }
 
-// Memoize to prevent Globe re-renders from propagating to Canvas
-const MemoGlobe = memo(Globe)
+// No memo — Globe must always see fresh focusTarget/connections props
 
 export default function GlobeWrapper({
   connections = [],
@@ -127,7 +126,7 @@ export default function GlobeWrapper({
             <directionalLight position={[-3, -1, -2]} intensity={0.15} color="#4A7C9B" />
 
             <Suspense fallback={null}>
-              <MemoGlobe
+              <Globe
                 connections={connections}
                 markers={markers}
                 onMarkerClick={onMarkerClick}

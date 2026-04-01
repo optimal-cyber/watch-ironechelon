@@ -132,8 +132,7 @@ export default function MainView() {
   const [globeConnections, setGlobeConnections] = useState<GlobeConnection[]>([])
   const [globeMarkers, setGlobeMarkers] = useState<GlobeMarker[]>([])
   const [mobilePanel, setMobilePanel] = useState<'globe' | 'list' | 'detail'>('globe')
-  const [hqCoords, setHqCoords] = useState<{ lat: number; lon: number } | null>(null)
-  const [instantFocus, setInstantFocus] = useState<{ lat: number; lon: number } | null>(null)
+  const [focusTarget, setFocusTarget] = useState<{ lat: number; lon: number } | undefined>(undefined)
 
   // Manual dynamic import — component reference stored once, never causes re-mount
   const [GlobeComponent, setGlobeComponent] = useState<ComponentType<GlobeWrapperProps> | null>(null)
@@ -179,22 +178,18 @@ export default function MainView() {
   useEffect(() => {
     if (!selectedEntityId) {
       setSelectedEntity(null)
-      setHqCoords(null)
-      setInstantFocus(null)
+      setFocusTarget(undefined)
       return
     }
 
-    // Zoom globe IMMEDIATELY using country data we already have from the entity list
+    // Zoom globe IMMEDIATELY using country data already loaded in the entity list
     const listEntity = entities.find((e) => e.id === selectedEntityId)
     if (listEntity?.headquartersCountry) {
-      setInstantFocus({
+      setFocusTarget({
         lat: listEntity.headquartersCountry.latitude,
         lon: listEntity.headquartersCountry.longitude,
       })
-    } else {
-      setInstantFocus(null)
     }
-    setHqCoords(null)
 
     fetch(`/api/entities/${selectedEntityId}`)
       .then((res) => res.json())
@@ -202,7 +197,15 @@ export default function MainView() {
         setSelectedEntity(data)
         setMobilePanel('detail')
 
-        // Fire-and-forget geocode refinement — globe already zoomed to country centroid
+        // Update focus from detail data (more reliable than list data)
+        if (data.headquartersCountry) {
+          setFocusTarget({
+            lat: data.headquartersCountry.latitude,
+            lon: data.headquartersCountry.longitude,
+          })
+        }
+
+        // Refine to city-level in background
         if (data.headquartersCity) {
           const params = new URLSearchParams({ city: data.headquartersCity })
           if (data.headquartersCountry?.name) {
@@ -212,13 +215,14 @@ export default function MainView() {
             .then((r) => r.json())
             .then((geo) => {
               if (geo.lat && geo.lon) {
-                setHqCoords({ lat: geo.lat, lon: geo.lon })
+                setFocusTarget({ lat: geo.lat, lon: geo.lon })
               }
             })
             .catch(() => {})
         }
       })
       .catch(console.error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEntityId])
 
   useEffect(() => {
@@ -277,25 +281,6 @@ export default function MainView() {
   const memoizedMarkers = useMemo(() => globeMarkers, [JSON.stringify(globeMarkers)])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedConnections = useMemo(() => globeConnections, [JSON.stringify(globeConnections)])
-
-  const focusTarget = useMemo(() => {
-    // 1. Best: geocoded city-level coordinates
-    if (hqCoords) {
-      return { lat: hqCoords.lat, lon: hqCoords.lon }
-    }
-    // 2. Good: country from detail API
-    if (selectedEntity?.headquartersCountry) {
-      return {
-        lat: selectedEntity.headquartersCountry.latitude,
-        lon: selectedEntity.headquartersCountry.longitude,
-      }
-    }
-    // 3. Instant: country from entity list (available before detail API returns)
-    if (instantFocus) {
-      return instantFocus
-    }
-    return undefined
-  }, [hqCoords, selectedEntity?.headquartersCountry, instantFocus])
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">
