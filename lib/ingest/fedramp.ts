@@ -79,56 +79,6 @@ function mapLocalRecord(r: LocalRecord) {
 }
 
 // ---------------------------------------------------------------------------
-// Map a record from the GitHub 18F data feed
-// Fields: Cloud_Service_Provider_Name, Cloud_Service_Provider_Package,
-//         Designation, Impact_Level, Service_Model, Deployment_Model,
-//         Authorization_Date, Authorization_Type, Independent_Assessor,
-//         Leveraged_ATO_Letters, CSP_URL, Logo, Sponsoring_Agency,
-//         FedRAMP_Package_ID, CSP_Description
-// ---------------------------------------------------------------------------
-interface GitHubRecord {
-  FedRAMP_Package_ID?: string
-  Cloud_Service_Provider_Name?: string
-  Cloud_Service_Provider_Package?: string
-  Designation?: string
-  Impact_Level?: string
-  Service_Model?: string[]
-  Deployment_Model?: string
-  Authorization_Date?: string
-  Authorization_Type?: string
-  Independent_Assessor?: string
-  Leveraged_ATO_Letters?: Array<{ Letter_Date?: string; Letter_Expiration_Date?: string; Leveraging_Agency?: string }> | null
-  CSP_Description?: string
-  CSP_URL?: string
-  Logo?: string
-  Sponsoring_Agency?: string
-}
-
-function mapGitHubRecord(r: GitHubRecord) {
-  const leveragingAgencies = Array.isArray(r.Leveraged_ATO_Letters)
-    ? r.Leveraged_ATO_Letters.map(l => l.Leveraging_Agency).filter(Boolean) as string[]
-    : []
-
-  return {
-    packageId: r.FedRAMP_Package_ID || '',
-    cspName: r.Cloud_Service_Provider_Name || '',
-    csoName: r.Cloud_Service_Provider_Package || '',
-    status: normalizeStatus(r.Designation || ''),
-    impactLevel: r.Impact_Level || null,
-    serviceModel: JSON.stringify(r.Service_Model || []),
-    deploymentModel: r.Deployment_Model || null,
-    authorizationDate: parseDate(r.Authorization_Date),
-    sponsoringAgency: r.Sponsoring_Agency || null,
-    leveragingAgencies: JSON.stringify(leveragingAgencies),
-    assessorName: r.Independent_Assessor || null,
-    authType: r.Authorization_Type || null,
-    serviceDescription: r.CSP_Description || null,
-    website: r.CSP_URL || null,
-    logo: r.Logo || null,
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Source functions
 // ---------------------------------------------------------------------------
 
@@ -148,20 +98,20 @@ export async function loadFromFile(filePath: string): Promise<{ data: ReturnType
 }
 
 /**
- * Fetch FedRAMP records from the 18F GitHub repository.
+ * Fetch FedRAMP records from the GSA marketplace data repository (updated daily).
  */
-export async function fetchFromGitHub(): Promise<{ data: ReturnType<typeof mapGitHubRecord>[]; sourceLabel: string }> {
-  const url = 'https://raw.githubusercontent.com/18F/fedramp-data/master/data/data.json'
+export async function fetchFromGitHub(): Promise<{ data: ReturnType<typeof mapLocalRecord>[]; sourceLabel: string }> {
+  const url = 'https://raw.githubusercontent.com/GSA/marketplace-fedramp-gov-data/main/data.json'
   console.log(`${LOG_PREFIX} Fetching FedRAMP data from GitHub: ${url}`)
   const res = await fetch(url)
   if (!res.ok) throw new Error(`GitHub fetch failed: ${res.status} ${res.statusText}`)
   const json = await res.json()
-  const records: GitHubRecord[] = json.data || json
+  const records: LocalRecord[] = json?.data?.Products || json?.Products || []
   if (!Array.isArray(records)) throw new Error('Unexpected GitHub JSON structure')
   console.log(`${LOG_PREFIX} Fetched ${records.length} records from GitHub`)
   return {
-    data: records.map(mapGitHubRecord),
-    sourceLabel: 'github:18F/fedramp-data',
+    data: records.map(mapLocalRecord),
+    sourceLabel: 'github:GSA/marketplace-fedramp-gov-data',
   }
 }
 

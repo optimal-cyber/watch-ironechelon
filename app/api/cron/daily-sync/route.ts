@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
 const FEDRAMP_DATA_URL =
-  'https://raw.githubusercontent.com/GSA/fedramp-automation/master/data/fedramp-marketplace.json'
+  'https://raw.githubusercontent.com/GSA/marketplace-fedramp-gov-data/main/data.json'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,45 +27,55 @@ export async function POST(request: NextRequest) {
       }
 
       const data = await response.json()
-      const products = Array.isArray(data) ? data : data.data || data.products || []
+      const products = data?.data?.Products || data?.Products || []
 
       console.log(`[ATO] Processing ${products.length} FedRAMP records...`)
 
       for (const product of products) {
         try {
-          const packageId = product.id || product.packageId || product.Cloud_Service_Provider_Package
+          const packageId = product.id
           if (!packageId) {
             fedrampFailed++
             continue
           }
 
+          // Normalize status: "FedRAMP Authorized" → "Authorized", etc.
+          let status = product.status || 'Unknown'
+          if (status.toLowerCase().includes('authorized') && !status.toLowerCase().includes('in process') && !status.toLowerCase().includes('ready')) status = 'Authorized'
+          else if (status.toLowerCase().includes('in process')) status = 'InProcess'
+          else if (status.toLowerCase().includes('ready')) status = 'Ready'
+
+          // Leveraging agencies
+          let leveragingAgencies: string[] = []
+          if (Array.isArray(product.agency_authorizations)) {
+            leveragingAgencies = product.agency_authorizations.map((a: unknown) => {
+              if (typeof a === 'string') return a
+              if (a && typeof a === 'object' && 'agency' in (a as Record<string, unknown>)) return (a as { agency: string }).agency
+              return String(a)
+            }).filter(Boolean)
+          }
+
           const record = {
             packageId: String(packageId),
-            csoName: product.name || product.Cloud_Service_Provider_Package || 'Unknown',
-            cspName: product.provider || product.Cloud_Service_Provider || 'Unknown',
-            status: product.status || product.Designation || 'Unknown',
-            impactLevel: product.impact_level || product.Impact_Level || null,
+            csoName: product.cso || product.name || 'Unknown',
+            cspName: product.csp || 'Unknown',
+            status,
+            impactLevel: product.impact_level || null,
             serviceModel: JSON.stringify(
-              Array.isArray(product.service_model || product.Service_Model)
-                ? (product.service_model || product.Service_Model)
-                : []
+              Array.isArray(product.service_model) ? product.service_model : []
             ),
-            deploymentModel: product.deployment_model || product.Deployment_Model || null,
-            authorizationDate: product.authorization_date || product.Authorization_Date
-              ? new Date(product.authorization_date || product.Authorization_Date)
+            deploymentModel: product.deployment_model || null,
+            authorizationDate: product.auth_date
+              ? new Date(product.auth_date)
               : null,
-            expirationDate: product.expiration_date || product.Expiration_Date
-              ? new Date(product.expiration_date || product.Expiration_Date)
+            expirationDate: product.annual_assessment
+              ? new Date(product.annual_assessment)
               : null,
-            sponsoringAgency: product.sponsoring_agency || product.Sponsoring_Agency || null,
-            leveragingAgencies: JSON.stringify(
-              Array.isArray(product.leveraging_agencies || product.Leveraging_Agencies)
-                ? (product.leveraging_agencies || product.Leveraging_Agencies)
-                : []
-            ),
-            assessorName: product.assessor || product.Independent_Assessor || null,
-            authType: product.authorization_type || product.Path || null,
-            serviceDescription: product.service_description || product.Service_Description || null,
+            sponsoringAgency: product.partnering_agency || null,
+            leveragingAgencies: JSON.stringify(leveragingAgencies),
+            assessorName: product.independent_assessor || null,
+            authType: product.auth_type || null,
+            serviceDescription: product.service_desc || null,
             website: product.website || null,
             logo: product.logo || null,
             lastSynced: new Date(),
