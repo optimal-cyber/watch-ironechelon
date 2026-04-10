@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { loadFromFile, fetchFromGitHub, syncFedrampData } from '@/lib/ingest/fedramp'
+import { loadFromFile, fetchFromGitHub, syncFedrampData, type MappedProduct } from '@/lib/ingest/fedramp'
 
 const LOG_PREFIX = '[ATO-SYNC]'
 
@@ -15,17 +15,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    let body: { filePath?: string } = {}
+    let body: { filePath?: string; records?: unknown[] } = {}
     try {
       body = await request.json()
     } catch {
       // No body or invalid JSON — that's fine, we'll use GitHub
     }
 
-    let data: Awaited<ReturnType<typeof loadFromFile>>['data']
+    let data: MappedProduct[]
     let sourceLabel: string
 
-    if (body.filePath) {
+    if (body.records && Array.isArray(body.records)) {
+      // Direct JSON upload (e.g., from admin panel pasting ATO export data)
+      console.log(`${LOG_PREFIX} Admin sync triggered with ${body.records.length} inline records`)
+      const { loadFromRecords } = await import('@/lib/ingest/fedramp')
+      const result = loadFromRecords(body.records)
+      data = result.data
+      sourceLabel = result.sourceLabel
+    } else if (body.filePath) {
       console.log(`${LOG_PREFIX} Admin sync triggered with file: ${body.filePath}`)
       const result = await loadFromFile(body.filePath)
       data = result.data
