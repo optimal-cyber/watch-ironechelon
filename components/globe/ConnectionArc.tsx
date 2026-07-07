@@ -30,7 +30,10 @@ export default function ConnectionArc({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lineRef = useRef<any>(null)
 
-  const { points, color } = useMemo(() => {
+  const dotRef = useRef<THREE.Mesh>(null)
+  const phase = useMemo(() => (source.lat * 7.13 + source.lon * 3.7) % 1, [source])
+
+  const { points, color, curve } = useMemo(() => {
     const start = new THREE.Vector3(...latLonToVector3(source.lat, source.lon, 1.21))
     const end = new THREE.Vector3(...latLonToVector3(target.lat, target.lon, 1.21))
 
@@ -40,37 +43,52 @@ export default function ConnectionArc({
     const dist = start.distanceTo(end)
     mid.normalize().multiplyScalar(1.21 + dist * 0.3)
 
-    const curve = new THREE.QuadraticBezierCurve3(start, mid, end)
-    const pts = curve.getPoints(50)
+    const c = new THREE.QuadraticBezierCurve3(start, mid, end)
+    const pts = c.getPoints(60)
 
     return {
       points: pts.map((p) => [p.x, p.y, p.z] as [number, number, number]),
       color: ARC_COLORS[type] || ARC_COLORS.DEFAULT,
+      curve: c,
     }
   }, [source, target, type])
 
-  // Animate the dash offset to create a traveling pulse effect
-  useFrame((_, delta) => {
+  // Animate the dash offset + a bright pulse traveling along the arc
+  useFrame(({ clock }, delta) => {
     if (lineRef.current) {
       const mat = lineRef.current.material
       if (mat && 'dashOffset' in mat) {
         mat.dashOffset -= delta * 0.4
       }
     }
+    if (dotRef.current) {
+      const t = (clock.getElapsedTime() * 0.16 + phase) % 1
+      const p = curve.getPointAt(t)
+      dotRef.current.position.set(p.x, p.y, p.z)
+      const s = 0.85 + Math.sin(t * Math.PI) * 0.5 // brighter mid-flight
+      dotRef.current.scale.setScalar(s)
+    }
   })
 
   return (
-    <Line
-      ref={lineRef}
-      points={points}
-      color={color}
-      lineWidth={1.5}
-      transparent
-      opacity={0.7}
-      dashed
-      dashScale={6}
-      dashSize={0.8}
-      gapSize={0.4}
-    />
+    <group>
+      <Line
+        ref={lineRef}
+        points={points}
+        color={color}
+        lineWidth={1.5}
+        transparent
+        opacity={0.85}
+        dashed
+        dashScale={6}
+        dashSize={0.8}
+        gapSize={0.4}
+      />
+      {/* Traveling data pulse */}
+      <mesh ref={dotRef}>
+        <sphereGeometry args={[0.013, 8, 8]} />
+        <meshBasicMaterial color={color} transparent opacity={0.95} blending={THREE.AdditiveBlending} />
+      </mesh>
+    </group>
   )
 }

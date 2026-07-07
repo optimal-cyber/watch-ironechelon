@@ -149,6 +149,17 @@ export default function GlobeWrapper({
           </Canvas>
         </GlobeErrorBoundary>
       )}
+
+      {/* Cinematic vignette — frames the globe, non-interactive */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(ellipse at center, transparent 52%, rgba(5,8,15,0.55) 100%)',
+        }}
+      />
     </div>
   )
 }
