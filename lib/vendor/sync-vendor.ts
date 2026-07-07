@@ -30,6 +30,7 @@ import { getEntityByName, getEntityByUei, parseBusinessSize, getSamApiKey, type 
 import { searchAwardsByFirm, normalizeSbirPhase, sbirAmount, type SbirAward } from '@/lib/clients/sbir'
 import { scoreAtoRelevance } from '@/lib/vendor/relevance'
 import { buildGovernmentFunding } from '@/lib/vendor/funding-government'
+import { withTimeout } from '@/lib/http/fetch-with-retry'
 
 type EntityRecord = NonNullable<Awaited<ReturnType<typeof prisma.entity.findFirst>>>
 
@@ -254,10 +255,15 @@ async function ingestUsaspending(
 }
 
 // ── SBIR/STTR ──────────────────────────────────────────────────────
-async function ingestSbir(entity: EntityRecord, canonical: string): Promise<number> {
+async function ingestSbir(
+  entity: EntityRecord,
+  canonical: string,
+  timeoutMs = 8000
+): Promise<number> {
   let awards: SbirAward[] = []
   try {
-    awards = await searchAwardsByFirm(canonical)
+    // Time-box SBIR so its aggressive 429 backoff can't hang the request path.
+    awards = await withTimeout(searchAwardsByFirm(canonical), timeoutMs, () => [])
   } catch {
     return 0 // SBIR API is flaky; a miss shouldn't fail the whole sync.
   }

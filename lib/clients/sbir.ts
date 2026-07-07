@@ -41,6 +41,8 @@ export interface SbirSearchOptions {
   year?: number
   start?: number
   rows?: number
+  /** Retry budget override (default 2). The weekly cron can pass more. */
+  retries?: number
 }
 
 /**
@@ -60,10 +62,19 @@ export async function searchAwardsByFirm(
   if (opts.agency) params.set('agency', opts.agency)
   if (opts.year) params.set('year', String(opts.year))
 
+  // Fail fast: SBIR rate-limits hard (429). A short retry budget keeps this
+  // off the request-path critical section; the weekly cron backfills misses.
   const data = await fetchJson<SbirAward[] | { results?: SbirAward[] }>(
     `${AWARDS_URL}?${params.toString()}`,
     {},
-    { label: `sbir ${firm}`, cacheTtlMs: 10 * 60_000, retries: 5, baseDelayMs: 1000 }
+    {
+      label: `sbir ${firm}`,
+      cacheTtlMs: 10 * 60_000,
+      retries: opts.retries ?? 2,
+      baseDelayMs: 400,
+      maxDelayMs: 3000,
+      timeoutMs: 8000,
+    }
   )
   // The API returns a bare array; guard for a wrapped shape just in case.
   return Array.isArray(data) ? data : data.results ?? []
