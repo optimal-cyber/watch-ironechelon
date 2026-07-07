@@ -29,6 +29,14 @@ model Entity {
   annualRevenue         String?
   isin                  String?
   logoUrl               String?
+  // ─── Vendor-selection intelligence (cached; populated by syncVendor) ───
+  businessSize          String?  // SMALL | OTHER (from SAM business types)
+  setAsides             String   @default("[]") // JSON array: SMALL_BUSINESS, 8A, WOMAN_OWNED, SDVOSB, HUBZONE, ...
+  riskFlags             String   @default("[]") // JSON array: FOREIGN_HQ, SURVEILLANCE_TIES, SAM_INACTIVE, EXPIRING_AUTH
+  primaryAgency         String?  // top agency by obligated $
+  agencyBreakdown       String?  // JSON cache: [{agency, awardCount, totalObligated}]
+  totalFederalObligated Float?   // sum of federal contract obligations
+  vendorSyncedAt        DateTime? // last on-demand vendor enrichment
   sources               String   @default("[]") // JSON array of {url, title, domain, date}
   providingTo           String   @default("[]") // JSON array of {name, alpha2, lat, lon}
   surveilling           String   @default("[]") // JSON array of {name, alpha2, lat, lon}
@@ -114,9 +122,15 @@ model FundingRound {
   date      DateTime?
   investors String    @default("[]") // JSON array of entity IDs
   sources   String    @default("[]")
+  source    String?   // government | apollo
+  roundName String?   // e.g. "SBIR Phase II", "Series C", "Federal Awards FY24"
+  provider  String?   // data provider (e.g. apollo.io)
+  raw       String?   // JSON blob of the raw enrichment response
   createdAt DateTime  @default(now())
 
   entity Entity @relation(fields: [entityId], references: [id])
+
+  @@index([entityId])
 }
 
 model NewsItem {
@@ -276,6 +290,8 @@ model FederalContract {
   startDate         DateTime?
   endDate           DateTime?
   naicsCode         String?
+  psc               String?
+  entityId          String?   // soft link to the matched Entity (no FK)
   atoRelevanceScore Int       @default(0)
   lastSynced        DateTime  @default(now())
   createdAt         DateTime  @default(now())
@@ -284,6 +300,7 @@ model FederalContract {
   @@index([awardingAgency])
   @@index([atoRelevanceScore])
   @@index([recipientName])
+  @@index([entityId])
 }
 
 model AtoAlert {

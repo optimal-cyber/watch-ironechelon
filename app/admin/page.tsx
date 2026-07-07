@@ -144,7 +144,7 @@ export default function AdminPage() {
       fetch('/api/admin/sync-status').then((r) => r.json()),
     ])
       .then(([statusData]) => {
-        setSyncStatuses(statusData.syncs || [])
+        setSyncStatuses(statusData.sources || statusData.syncs || [])
         setRecordCounts(statusData.counts || {})
       })
       .catch(console.error)

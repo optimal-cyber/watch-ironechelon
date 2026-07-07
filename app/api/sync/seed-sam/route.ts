@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getSamApiKey } from '@/lib/clients/sam'
 
 /**
  * SAM.gov Entity Registration sync.
@@ -101,9 +102,9 @@ interface SamEntity {
 const apiErrors: string[] = []
 
 async function searchSam(companyName: string): Promise<SamEntity[]> {
-  const apiKey = process.env.SAM_GOV_API_KEY
+  const apiKey = getSamApiKey()
   if (!apiKey) {
-    apiErrors.push('SAM_GOV_API_KEY not configured')
+    apiErrors.push('SAM API key not configured (set SAM_GOV_API_KEY or SAM_SECRET)')
     return []
   }
 
@@ -162,9 +163,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!process.env.SAM_GOV_API_KEY) {
+  if (!getSamApiKey()) {
     return NextResponse.json({
-      error: 'SAM_GOV_API_KEY not configured. Get a free key at https://api.sam.gov',
+      error: 'SAM API key not configured (set SAM_GOV_API_KEY or SAM_SECRET). Get a free key at https://api.sam.gov',
     }, { status: 500 })
   }
 
