@@ -71,7 +71,18 @@ async function ensureEntity(
 ): Promise<{ entity: EntityRecord; created: boolean; canonical: string }> {
   const canonical = (input.name && findAlias(input.name)?.canonical) || input.name || ''
   const existing = await resolveEntity({ name: input.name, uei: input.uei })
-  if (existing) return { entity: existing, created: false, canonical: canonical || existing.name }
+  if (existing) {
+    // Self-heal mistyped vendors: some majors arrive from upstream data tagged
+    // INVESTOR/GOVERNMENT (e.g. Lockheed Martin as INVESTOR), which hides them
+    // from the vendor directory. If the alias registry has an authoritative
+    // vendor type, correct it.
+    const aliasType = findAlias(canonical || existing.name)?.entityType
+    if (aliasType && aliasType !== existing.type && (existing.type === 'INVESTOR' || existing.type === 'GOVERNMENT')) {
+      await prisma.entity.update({ where: { id: existing.id }, data: { type: aliasType } })
+      existing.type = aliasType
+    }
+    return { entity: existing, created: false, canonical: canonical || existing.name }
+  }
 
   if (!canonical) throw new Error('syncVendor requires a name (or a UEI that matches an existing entity)')
 
