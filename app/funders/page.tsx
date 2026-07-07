@@ -27,10 +27,33 @@ interface TypeBreakdown {
   count: number
 }
 
+interface FundedVendor {
+  name: string
+  slug: string
+  government: number
+  private: number
+  total: number
+}
+
 interface FunderStats {
   technologiesFunded: TechStat[]
   typeBreakdown: TypeBreakdown[]
   totalConnections: number
+  funding?: {
+    governmentTotal: number
+    privateTotal: number
+    totalFunding: number
+    fundedVendorCount: number
+    topFunded: FundedVendor[]
+  }
+}
+
+function fmtUSD(v: number): string {
+  if (!v) return '$0'
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`
+  return `$${v.toFixed(0)}`
 }
 
 interface EntityDetailData {
@@ -218,6 +241,63 @@ export default function FundersPage() {
                     <div className="text-xs text-muted font-mono tracking-wider">ENTITIES FUNDED</div>
                   </div>
                 </div>
+
+                {/* Capital deployed (real funding amounts) */}
+                {stats.funding && stats.funding.totalFunding > 0 && (
+                  <div className="mb-8">
+                    <h3 className="font-mono text-xs tracking-[0.2em] text-muted mb-4 uppercase">Capital Deployed</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5">
+                      <div className="bg-surface border border-border rounded-lg p-4">
+                        <div className="font-mono text-2xl text-accent-blue mb-1">{fmtUSD(stats.funding.governmentTotal)}</div>
+                        <div className="text-xs text-muted font-mono tracking-wider">GOVERNMENT FUNDING</div>
+                      </div>
+                      <div className="bg-surface border border-border rounded-lg p-4">
+                        <div className="font-mono text-2xl text-accent-green mb-1">{fmtUSD(stats.funding.privateTotal)}</div>
+                        <div className="text-xs text-muted font-mono tracking-wider">PRIVATE CAPITAL</div>
+                      </div>
+                      <div className="bg-surface border border-border rounded-lg p-4">
+                        <div className="font-mono text-2xl text-foreground mb-1">{fmtUSD(stats.funding.totalFunding)}</div>
+                        <div className="text-xs text-muted font-mono tracking-wider">TOTAL TRACKED</div>
+                      </div>
+                      <div className="bg-surface border border-border rounded-lg p-4">
+                        <div className="font-mono text-2xl text-accent-gold mb-1">{stats.funding.fundedVendorCount}</div>
+                        <div className="text-xs text-muted font-mono tracking-wider">VENDORS FUNDED</div>
+                      </div>
+                    </div>
+
+                    {stats.funding.topFunded.length > 0 && (
+                      <div>
+                        <h4 className="font-mono text-[10px] tracking-[0.2em] text-muted mb-2 uppercase">Most-Funded Vendors</h4>
+                        <div className="space-y-1.5">
+                          {stats.funding.topFunded.map((v) => (
+                            <a
+                              key={v.slug}
+                              href={`/vendor/${v.slug}`}
+                              className="flex items-center gap-3 group"
+                            >
+                              <span className="text-xs font-mono text-muted-foreground group-hover:text-foreground w-48 truncate shrink-0 transition-colors">
+                                {v.name}
+                              </span>
+                              <div className="flex-1 h-2 bg-surface rounded overflow-hidden flex">
+                                {v.government > 0 && (
+                                  <div className="h-full bg-accent-blue" style={{ width: `${(v.government / stats.funding!.topFunded[0].total) * 100}%` }} />
+                                )}
+                                {v.private > 0 && (
+                                  <div className="h-full bg-accent-green" style={{ width: `${(v.private / stats.funding!.topFunded[0].total) * 100}%` }} />
+                                )}
+                              </div>
+                              <span className="text-xs font-mono text-foreground w-16 text-right shrink-0">{fmtUSD(v.total)}</span>
+                            </a>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 text-[10px] font-mono text-muted">
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent-blue" /> Government</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent-green" /> Private</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Type breakdown */}
                 <div className="mb-8">
