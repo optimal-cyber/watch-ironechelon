@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { fetchLatestDcasXlsx, parseDcasWorkbook, syncDisaData } from '@/lib/ingest/disa'
 
 const FEDRAMP_DATA_URL =
   'https://raw.githubusercontent.com/GSA/marketplace-fedramp-gov-data/main/data.json'
@@ -142,7 +143,32 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // ── Step 2: Generate expiration alerts ────────────────────────────
+    // ── Step 2: DISA DCAS sync (probe dl.dod.cyber.mil) ───────────────
+    try {
+      console.log('[ATO] Probing dl.dod.cyber.mil for latest DCAS xlsx...')
+      const { buffer, url } = await fetchLatestDcasXlsx()
+      const records = parseDcasWorkbook(buffer)
+      const result = await syncDisaData(records)
+      summary.disa = { source: url, ...result, errors: undefined }
+    } catch (err) {
+      console.error('[ATO] DISA sync failed:', err)
+      summary.disa = { error: err instanceof Error ? err.message : String(err) }
+
+      await prisma.atoSyncLog.upsert({
+        where: { source: 'disa' },
+        create: {
+          source: 'disa',
+          lastSyncAt: new Date(),
+          status: 'failed',
+        },
+        update: {
+          lastSyncAt: new Date(),
+          status: 'failed',
+        },
+      })
+    }
+
+    // ── Step 3: Generate expiration alerts ────────────────────────────
     let alertsCreated = 0
 
     try {
@@ -243,4 +269,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Vercel Cron triggers via GET; delegate to POST (auth is checked there).
+export async function GET(request: NextRequest) {
+  return POST(request)
 }

@@ -221,6 +221,17 @@ export default function EntityDetail({
 
       {/* Content */}
       <div className="p-4 space-y-5">
+        {/* Vendor dossier entry point (acquisition lens) */}
+        <a
+          href={`/vendor/${entity.slug}`}
+          className="flex items-center justify-between px-3 py-2 rounded border border-accent-blue/30 bg-accent-blue/5 hover:bg-accent-blue/10 transition-colors group"
+        >
+          <span className="text-[11px] font-mono tracking-wider text-accent-blue uppercase">
+            View Full Vendor Dossier
+          </span>
+          <span className="text-accent-blue text-xs group-hover:translate-x-0.5 transition-transform">→</span>
+        </a>
+
         {/* Description */}
         {entity.description && (
           <div className="text-sm text-muted-foreground leading-relaxed">
