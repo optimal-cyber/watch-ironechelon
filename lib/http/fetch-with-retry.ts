@@ -159,3 +159,26 @@ export async function fetchJson<T = unknown>(
 export function clearFetchCache(): void {
   responseCache.clear()
 }
+
+/**
+ * Race a promise against a timeout. On timeout, resolves with `onTimeout()` if
+ * provided, else rejects. Used to keep slow/flaky sources (e.g. SBIR's 429
+ * backoff) from hanging a request — the underlying work may keep running, but
+ * the caller stops waiting.
+ */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  onTimeout?: () => T
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (onTimeout) resolve(onTimeout())
+      else reject(new Error(`timed out after ${ms}ms`))
+    }, ms)
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v) },
+      (e) => { clearTimeout(timer); reject(e) }
+    )
+  })
+}

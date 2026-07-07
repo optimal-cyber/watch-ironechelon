@@ -70,6 +70,7 @@ const EarthSphere = memo(function EarthSphere() {
 
         void main() {
           vec3 worldNormal = normalize(vWorldPosition);
+          vec3 viewDir = normalize(cameraPosition - vWorldPosition);
           float sunDot = dot(worldNormal, sunDirection);
 
           // Smooth day/night transition
@@ -78,19 +79,37 @@ const EarthSphere = memo(function EarthSphere() {
           vec3 dayColor = texture2D(dayTexture, vUv).rgb;
           vec3 nightColor = texture2D(nightTexture, vUv).rgb;
 
-          // Darken the day side slightly for that SurveillanceWatch look
-          dayColor *= 0.75 + 0.25 * dayFactor;
+          float dayLum = dot(dayColor, vec3(0.299, 0.587, 0.114));
 
-          // Boost night city lights
-          nightColor *= 1.8;
+          // Detect water: oceans read dark + blue in the blue-marble map
+          float blueness = dayColor.b - max(dayColor.r, dayColor.g);
+          float water = smoothstep(0.0, 0.06, blueness) * (1.0 - smoothstep(0.16, 0.34, dayLum));
 
-          // Blend: day side shows geography, night side shows city lights
+          // Specular sun-glint on water (Blinn-Phong) — a moving highlight that
+          // makes the oceans feel alive as the globe turns.
+          vec3 halfDir = normalize(sunDirection + viewDir);
+          float spec = pow(max(dot(worldNormal, halfDir), 0.0), 55.0);
+          vec3 glint = vec3(1.0, 0.96, 0.86) * spec * water * dayFactor * 1.3;
+
+          // Day shading (slightly darkened for the surveillance look)
+          dayColor *= 0.72 + 0.28 * dayFactor;
+
+          // Warm, boosted night city lights
+          nightColor *= 1.9;
+          nightColor.r *= 1.06;
+          nightColor.g *= 1.01;
+
+          // Blend day geography with night city lights
           vec3 color = mix(nightColor, dayColor, dayFactor);
+          color += glint;
 
-          // Add subtle blue tint to ocean/dark areas (surveillance aesthetic)
-          float luminance = dot(color, vec3(0.299, 0.587, 0.114));
-          vec3 blueTint = vec3(0.05, 0.08, 0.15);
-          color = color + blueTint * (1.0 - luminance) * 0.4;
+          // Atmospheric rim on the earth's limb — cool scatter brightening
+          float rim = 1.0 - max(dot(viewDir, worldNormal), 0.0);
+          color += vec3(0.30, 0.48, 0.90) * pow(rim, 3.0) * (0.35 + 0.65 * dayFactor) * 0.65;
+
+          // Subtle blue tint in dark areas (surveillance aesthetic)
+          vec3 blueTint = vec3(0.04, 0.07, 0.14);
+          color += blueTint * (1.0 - dayLum) * 0.35;
 
           gl_FragColor = vec4(color, 1.0);
         }
@@ -293,7 +312,7 @@ function CameraController({
       // Sync orbit controls to keep them in sync with our animation
       syncOrbitControls()
     } else if (isAutoRotating.current && !focusTarget) {
-      group.rotation.y += delta * 0.05
+      group.rotation.y += delta * 0.035
     }
   })
 
@@ -315,7 +334,9 @@ export default function Globe({
 
   return (
     <>
-      <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade speed={0.5} />
+      {/* Layered starfield for depth */}
+      <Stars radius={100} depth={60} count={6000} factor={3.5} saturation={0} fade speed={0.4} />
+      <Stars radius={200} depth={80} count={2500} factor={6} saturation={0.05} fade speed={0.2} />
 
       <CameraController focusTarget={focusTarget} groupRef={groupRef} />
 

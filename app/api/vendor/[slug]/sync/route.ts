@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { syncVendor } from '@/lib/vendor/sync-vendor'
 
+export const maxDuration = 60
+
 /**
  * Explicit vendor refresh trigger. The dossier aggregator builds unknown
  * vendors in-process; this endpoint is for a manual "refresh" or an operator

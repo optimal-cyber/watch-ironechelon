@@ -30,6 +30,7 @@ import { getEntityByName, getEntityByUei, parseBusinessSize, getSamApiKey, type 
 import { searchAwardsByFirm, normalizeSbirPhase, sbirAmount, type SbirAward } from '@/lib/clients/sbir'
 import { scoreAtoRelevance } from '@/lib/vendor/relevance'
 import { buildGovernmentFunding } from '@/lib/vendor/funding-government'
+import { withTimeout } from '@/lib/http/fetch-with-retry'
 
 type EntityRecord = NonNullable<Awaited<ReturnType<typeof prisma.entity.findFirst>>>
 
@@ -70,7 +71,18 @@ async function ensureEntity(
 ): Promise<{ entity: EntityRecord; created: boolean; canonical: string }> {
   const canonical = (input.name && findAlias(input.name)?.canonical) || input.name || ''
   const existing = await resolveEntity({ name: input.name, uei: input.uei })
-  if (existing) return { entity: existing, created: false, canonical: canonical || existing.name }
+  if (existing) {
+    // Self-heal mistyped vendors: some majors arrive from upstream data tagged
+    // INVESTOR/GOVERNMENT (e.g. Lockheed Martin as INVESTOR), which hides them
+    // from the vendor directory. If the alias registry has an authoritative
+    // vendor type, correct it.
+    const aliasType = findAlias(canonical || existing.name)?.entityType
+    if (aliasType && aliasType !== existing.type && (existing.type === 'INVESTOR' || existing.type === 'GOVERNMENT')) {
+      await prisma.entity.update({ where: { id: existing.id }, data: { type: aliasType } })
+      existing.type = aliasType
+    }
+    return { entity: existing, created: false, canonical: canonical || existing.name }
+  }
 
   if (!canonical) throw new Error('syncVendor requires a name (or a UEI that matches an existing entity)')
 
@@ -254,10 +266,15 @@ async function ingestUsaspending(
 }
 
 // ── SBIR/STTR ──────────────────────────────────────────────────────
-async function ingestSbir(entity: EntityRecord, canonical: string): Promise<number> {
+async function ingestSbir(
+  entity: EntityRecord,
+  canonical: string,
+  timeoutMs = 8000
+): Promise<number> {
   let awards: SbirAward[] = []
   try {
-    awards = await searchAwardsByFirm(canonical)
+    // Time-box SBIR so its aggressive 429 backoff can't hang the request path.
+    awards = await withTimeout(searchAwardsByFirm(canonical), timeoutMs, () => [])
   } catch {
     return 0 // SBIR API is flaky; a miss shouldn't fail the whole sync.
   }
